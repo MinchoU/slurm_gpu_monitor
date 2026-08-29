@@ -9,6 +9,7 @@ Per-user settings (ssh host etc.) live in ~/.config/gpumonitor/config.json;
 run ./setup.sh or use the app's setup window to create it, or pass --host.
 """
 import argparse
+import concurrent.futures
 import json
 import os
 import queue
@@ -18,6 +19,8 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import collect  # same directory -- reuses the remote probe script
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "history.db")
@@ -52,9 +55,55 @@ else:
     SSH_OPTS = BASE_SSH_OPTS
 
 state = {"snapshot": None, "error": None, "polled_at": 0, "poll_ms": 0,
-         "host": None, "interval": 15}
+         "host": None, "interval": 15, "direct": []}
 state_lock = threading.Lock()
 wake = queue.Queue(maxsize=1)
+direct_wake = queue.Queue(maxsize=1)
+
+# Standalone GPU machines (e.g. RLLab boxes) that are NOT part of the Slurm
+# cluster: probed by ssh'ing straight to them. Their ssh aliases often carry
+# `RemoteCommand bash -l` / `RequestTTY force`, which break non-interactive
+# command execution -- override both.
+DIRECT_SSH = collect.SSH + ["-o", "RemoteCommand=none", "-o", "RequestTTY=no"]
+
+
+def probe_direct(node):
+    try:
+        _, nd = collect.probe_node(node, DIRECT_SSH)
+    except subprocess.TimeoutExpired:
+        return node, {"error": "ssh timeout"}
+    except Exception as e:  # noqa: BLE001
+        return node, {"error": str(e)}
+    if not nd.get("gpus"):
+        return node, {"error": "nvidia-smi 출력 없음 (접속/드라이버 문제)"}
+    return node, nd
+
+
+def direct_poller(nodes, interval):
+    """Poll the direct (non-Slurm) nodes in parallel, same rhythm as the
+    Slurm poller. Result lands in state['direct'] for the dashboard."""
+    while True:
+        data = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(nodes))) as ex:
+            for node, nd in ex.map(probe_direct, nodes):
+                data[node] = nd
+        entries = []
+        for node in nodes:
+            nd = data.get(node, {"error": "no data"})
+            if "error" in nd:
+                entries.append({"node": node, "error": nd["error"]})
+                continue
+            gpus = sorted((dict(g) for g in nd["gpus"].values()),
+                          key=lambda g: (g.get("idx") is None, g.get("idx")))
+            for g in gpus:
+                g.setdefault("idx", g.get("smi_idx"))
+            entries.append({"node": node, "gpus": gpus})
+        with state_lock:
+            state["direct"] = entries
+        try:
+            direct_wake.get(timeout=interval)
+        except queue.Empty:
+            pass
 
 
 def load_config():
@@ -171,10 +220,11 @@ class Handler(BaseHTTPRequestHandler):
                 payload = dict(state)
             self._send(200, json.dumps(payload), "application/json")
         elif self.path.startswith("/api/refresh"):
-            try:
-                wake.put_nowait(1)
-            except queue.Full:
-                pass
+            for q in (wake, direct_wake):
+                try:
+                    q.put_nowait(1)
+                except queue.Full:
+                    pass
             self._send(200, '{"ok":true}', "application/json")
         elif self.path in ("/", "/index.html"):
             with open(INDEX, "rb") as f:
@@ -206,6 +256,14 @@ def bind(port):
     raise SystemExit(f"{port}-{port + 11} 사이에 빈 포트가 없습니다")
 
 
+def norm_nodes(raw):
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        raw = [x for x in raw.split(",")]
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
 def resolve_settings(args):
     """CLI flag > config file > default."""
     cfg = load_config()
@@ -214,10 +272,11 @@ def resolve_settings(args):
         "remote": args.remote or cfg.get("remote") or "~/gpumon/collect.py",
         "interval": args.interval or int(cfg.get("interval") or 15),
         "port": args.port or int(cfg.get("port") or 8777),
+        "nodes": norm_nodes(cfg.get("nodes")),
     }
 
 
-def test_connection(host, remote, deploy):
+def test_connection(host, remote, deploy, nodes):
     """One-shot poll; prints a summary. Exit 0 on success."""
     if deploy:
         deploy_collector(host)
@@ -232,7 +291,17 @@ def test_connection(host, remote, deploy):
                 for j in running)
     print(f"성공: {host} 연결 OK · 잡 {len(snap['jobs'])}개(실행 {len(running)}) · "
           f"GPU {n_gpu}개 · {snap['poll_ms']}ms")
-    return 0
+    rc = 0
+    for node in nodes:
+        _, nd = probe_direct(node)
+        if "error" in nd:
+            print(f"직접 노드 {node}: 실패 — {nd['error']}")
+            rc = 1
+        else:
+            n = len(nd["gpus"])
+            busy = sum(1 for g in nd["gpus"].values() if g.get("procs"))
+            print(f"직접 노드 {node}: OK · GPU {n}개(가동 {busy})")
+    return rc
 
 
 def main():
@@ -252,7 +321,8 @@ def main():
         raise SystemExit(2)
 
     if args.test:
-        raise SystemExit(test_connection(s["host"], s["remote"], not args.no_deploy))
+        raise SystemExit(test_connection(s["host"], s["remote"], not args.no_deploy,
+                                         s["nodes"]))
 
     if not args.no_deploy:
         deploy_collector(s["host"])
@@ -262,10 +332,15 @@ def main():
     srv, port = bind(s["port"])
     threading.Thread(target=poller, args=(s["host"], s["remote"], s["interval"]),
                      daemon=True).start()
+    if s["nodes"]:
+        threading.Thread(target=direct_poller, args=(s["nodes"], s["interval"]),
+                         daemon=True).start()
     # The .app wrapper reads this line to learn which port to open.
     print(f"GPUMON_PORT={port}", flush=True)
     print(f"  SLURM GPU Monitor  ->  http://localhost:{port}")
-    print(f"  polling {s['host']} every {s['interval']}s   (ctrl-c to stop)", flush=True)
+    extra = f"  + 직접 노드 {', '.join(s['nodes'])}" if s["nodes"] else ""
+    print(f"  polling {s['host']} every {s['interval']}s{extra}   (ctrl-c to stop)",
+          flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

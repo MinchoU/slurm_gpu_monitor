@@ -137,9 +137,9 @@ def fill_allocations(jobs):
             job["alloc"] = alloc
 
 
-def probe_node(node):
+def probe_node(node, ssh=SSH):
     try:
-        out = run(SSH + [node, NODE_PROBE], timeout=25)
+        out = run(ssh + [node, NODE_PROBE], timeout=25)
     except subprocess.TimeoutExpired:
         return node, {"error": "ssh timeout"}
     except Exception as e:  # noqa: BLE001

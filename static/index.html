@@ -290,6 +290,39 @@ function clusterView(cluster, myByNode) {
   return `<div class="section">클러스터 GPU 점유 현황 <span class="note">— Slurm 할당 기준(누가/실사용률은 정책상 안 보임) · 여유 GPU 총 ${totFree}장</span></div><div class="occ">${cards}</div>`;
 }
 
+// Standalone GPU machines (config "nodes") probed by direct ssh, no Slurm.
+function directNodesView(nodes) {
+  if (!nodes || !nodes.length) return "";
+  const cards = nodes.map(nd => {
+    if (nd.error) return `<div class="node"><div class="node-top"><span class="nm">${esc(nd.node)}</span>
+      <span class="err">접속 불가: ${esc(nd.error)}</span></div></div>`;
+    const lanes = nd.gpus.map(g => {
+      const util = g.util ?? 0;
+      const users = [...new Set((g.procs || []).map(p => p.user).filter(u => u !== "?"))];
+      let who, cls;
+      if (!users.length) { who = "여유"; cls = "free"; }
+      else { who = users.join(", "); cls = ""; }
+      return `
+        <div class="lane">
+          <div class="lane-h"><span class="gi">GPU ${g.idx ?? g.smi_idx}</span>
+            <span class="who ${cls}" title="${esc(who)}">${esc(who)}</span></div>
+          <div class="minibar"><i class="${utilCls(util)}" style="width:${util}%"></i></div>
+          <div class="lane-f"><span>util ${util}%</span><span>${(g.mem_used / 1024).toFixed(0)}/${(g.mem_total / 1024).toFixed(0)}G</span></div>
+        </div>`;
+    }).join("");
+    const free = nd.gpus.filter(g => !(g.procs || []).length).length;
+    return `
+      <div class="node">
+        <div class="node-top"><span class="nm">${esc(nd.node)}</span>
+          <span class="chip">${esc(shortGpu(nd.gpus[0] && nd.gpus[0].name || ""))}</span>
+          <span class="chip">GPU ${nd.gpus.length}장</span>
+          <span class="chip">여유 ${free}</span></div>
+        <div class="lanes">${lanes}</div>
+      </div>`;
+  }).join("");
+  return `<div class="section">직접 접속 노드 <span class="note">— Slurm 없이 ssh로 직접 보는 GPU (설정 nodes)</span></div>${cards}`;
+}
+
 function render(s) {
   const snap = s.snapshot;
   if (s.error) $("#stamp").innerHTML = `<span class="err">폴링 실패: ${esc(s.error)}</span>`;
@@ -345,6 +378,7 @@ function render(s) {
   (snap.shared_nodes || []).forEach(nd => { myByNode[nd.node] = (nd.my_idx || []).length; });
   html += sharedNodeView(snap.shared_nodes);
   html += clusterView(snap.cluster, myByNode);
+  html += directNodesView(s.direct);
 
   $("#body").innerHTML = html;
   window.__gpumonInterval = s.interval || 15;

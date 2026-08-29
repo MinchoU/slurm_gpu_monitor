@@ -20,6 +20,16 @@ EOF
 HOST=$(cur "$CFG" host "")
 INTERVAL=$(cur "$CFG" interval "15")
 PORT=$(cur "$CFG" port "8777")
+NODES=$(python3 - "$CFG" <<'EOF'
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        n = json.load(f).get("nodes", [])
+    print(",".join(n) if isinstance(n, list) else n)
+except Exception:
+    print("")
+EOF
+)
 
 echo "SLURM GPU Monitor 설정"
 echo
@@ -34,6 +44,8 @@ printf "폴링 간격(초) [%s]: " "$INTERVAL"
 read I; [ -n "$I" ] && INTERVAL="$I"
 printf "대시보드 포트 [%s]: " "$PORT"
 read P; [ -n "$P" ] && PORT="$P"
+printf "직접 ssh되는 GPU 노드(쉼표 구분, 비우면 없음) [%s]: " "$NODES"
+read N; [ -n "$N" ] && NODES="$N"
 
 [ -n "$HOST" ] || { echo "host를 입력하세요"; exit 1; }
 
@@ -46,11 +58,12 @@ else
   case "$a" in y|Y) ;; *) exit 1;; esac
 fi
 
-python3 - "$CFG" "$HOST" "$INTERVAL" "$PORT" <<'EOF'
+python3 - "$CFG" "$HOST" "$INTERVAL" "$PORT" "$NODES" <<'EOF'
 import json, os, sys
-path, host, interval, port = sys.argv[1:5]
+path, host, interval, port, nodes = sys.argv[1:6]
 os.makedirs(os.path.dirname(path), exist_ok=True)
 cfg = {"host": host, "interval": int(interval), "port": int(port)}
+cfg["nodes"] = [x.strip() for x in nodes.split(",") if x.strip()]
 try:
     with open(path) as f:
         old = json.load(f)

@@ -54,7 +54,19 @@ cd ~/gpu-monitor
 | `remote` | 로그인 노드의 collect.py 경로 | `~/gpumon/collect.py` |
 | `interval` | 폴링 간격(초) | `15` |
 | `port` | 대시보드 포트 (차질이 있으면 다음 포트 자동 시도) | `8777` |
+| `nodes` | **직접** ssh되는 스탠드얼론 GPU 노드 목록 (Slurm 밖 머신) | 없음 |
 | `repo` | (앱 전용) 이 리포지토리가 있는 경로 | `~/gpu-monitor` |
+
+`nodes` 예시 — Slurm 클러스터에 속하지 않고 ssh alias로만 접속되는 GPU 머신
+(RLLab box 등)을 함께 보고 싶으면:
+
+```json
+{ "host": "ai", "nodes": ["node1", "node10", "node200"] }
+```
+
+각 노드로 `ssh <alias> '<nvidia-smi + ps 스크립트>'` 를 돌려 GPU별 util/메모리/
+사용자를 봅니다. alias에 `RemoteCommand`/`RequestTTY`가 설정돼 있으면 자동으로
+중립화합니다.
 
 `host`만 있어야 동작하고, 나머지는 기본값 사용.
 CLI 인자(`--host` 등)는 설정 파일보다 우선한다.
