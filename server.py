@@ -14,6 +14,7 @@ import os
 import queue
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -38,11 +39,17 @@ SETUP_HINT = f"""\
 
 # ssh multiplexing keeps repeated polls at ~0.3s instead of ~2s.
 # PermitLocalCommand=no suppresses the cluster's xhost/X11 warning spam.
-SSH_OPTS = [
-    "-o", "PermitLocalCommand=no", "-o", "ForwardX11=no", "-o", "BatchMode=yes",
-    "-o", "ControlMaster=auto", "-o", "ControlPath=/tmp/gpumon-ssh-%r@%h:%p",
-    "-o", "ControlPersist=600", "-o", "ConnectTimeout=10",
-]
+# Windows OpenSSH has no multiplexing (and ':' is illegal in ControlPath), so
+# skip it there -- plain ssh still works, just a bit slower per poll.
+BASE_SSH_OPTS = ["-o", "PermitLocalCommand=no", "-o", "ForwardX11=no",
+                 "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
+if sys.platform != "win32":
+    SSH_OPTS = BASE_SSH_OPTS + [
+        "-o", "ControlMaster=auto", "-o", "ControlPath=/tmp/gpumon-ssh-%r@%h:%p",
+        "-o", "ControlPersist=600",
+    ]
+else:
+    SSH_OPTS = BASE_SSH_OPTS
 
 state = {"snapshot": None, "error": None, "polled_at": 0, "poll_ms": 0,
          "host": None, "interval": 15}

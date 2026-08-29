@@ -61,12 +61,14 @@ CLI 인자(`--host` 등)는 설정 파일보다 우선한다.
 
 ## 실행
 
-- **터미널**: `./run.sh` (설정값 사용, 브라우저 자동 열림)
+- **터미널 (모든 OS)**: `./run.sh` (설정값 사용, 브라우저 자동 열림)
+  - macOS / Linux / Windows(Git Bash, WSL2) 모두 가능 — `python3`만 있으면 됨
+  - Linux에서 `python3`가 아니라면 `python server.py` 로 직접 실행
 - **옵션**: `python3 server.py --host ai --interval 30 --port 8765`
 - **연결 테스트**: `python3 server.py --test` (한 번 폴링 후 종료)
 - **macOS 앱**: 아래 빌드 후 `GPU Monitor.app` 실행 (설정 메뉴 ⌘, 로 변경)
 
-## macOS 앱 빌드 (선택)
+## macOS 앱 빌드 (선택, macOS 전용)
 
 Xcode Command Line Tools와 Chrome(아이콘 렌더링용)이 필요합니다.
 
