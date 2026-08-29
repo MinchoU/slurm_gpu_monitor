@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SLURM GPU Monitor</title>
+<style>
+  :root {
+    --plane: #f9f9f7; --surface: #fcfcfb;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,.10);
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --series: #2a78d6; --series-soft: #cde2fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --plane: #0d0d0d; --surface: #1a1a19;
+      --ink: #fff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,.10);
+      --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+      --series: #3987e5; --series-soft: #184f95;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: var(--plane); color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+  .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stamp { color: var(--muted); font-size: 12px; }
+  button {
+    font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+    cursor: pointer;
+  }
+  button:hover { color: var(--ink); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { color: var(--muted); font-size: 12px; }
+  .tile .value { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px; }
+  .tile .sub { color: var(--ink-2); font-size: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card.idle { border-color: var(--critical); }
+  .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .jobid { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .where { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .chip { font-size: 11px; color: var(--ink-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .pill { margin-left: auto; flex: none; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; display: flex; align-items: center; gap: 4px; }
+  .pill.on  { color: var(--good);     background: color-mix(in srgb, var(--good) 14%, transparent); }
+  .pill.low { color: var(--serious);  background: color-mix(in srgb, var(--serious) 16%, transparent); }
+  .pill.off { color: var(--critical); background: color-mix(in srgb, var(--critical) 14%, transparent); }
+
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .row .k { color: var(--muted); font-size: 12px; width: 34px; flex: none; }
+  .row .v { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; width: 96px; flex: none; text-align: right; }
+  .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; background: var(--series); }
+  .bar > i.warn { background: var(--serious); }
+  .bar > i.crit { background: var(--critical); }
+
+  .spark { margin: 10px 0 12px; position: relative; }
+  .spark svg { display: block; width: 100%; height: 38px; overflow: visible; }
+  .spark .cap { color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+  .tip {
+    position: absolute; pointer-events: none; opacity: 0; transform: translate(-50%, -120%);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 7px; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
+  .procs { border-top: 1px solid var(--grid); padding-top: 10px; margin-top: 4px; }
+  .proc { font-size: 12px; margin-bottom: 8px; }
+  .proc .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .proc code {
+    display: block; color: var(--ink-2); font-size: 11px; line-height: 1.45;
+    word-break: break-all; margin-top: 2px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .proc.expanded code { -webkit-line-clamp: unset; }
+  .empty { border-top: 1px solid var(--grid); padding-top: 10px; margin-top: 4px; font-size: 12px; }
+  .empty .why { color: var(--critical); font-weight: 600; margin-bottom: 6px; }
+  .cmd {
+    display: flex; align-items: center; gap: 8px; background: var(--plane);
+    border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  }
+  .cmd code { flex: 1; font-size: 11px; color: var(--ink-2); }
+  .err { color: var(--critical); font-size: 12px; }
+  .section { color: var(--muted); font-size: 12px; margin: 22px 0 8px; }
+  .section .note { color: var(--muted); font-weight: 400; opacity: .8; }
+
+  /* Whole-node "who is sharing this node with me" view */
+  .node { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+  .node-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .node-top .nm { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lanes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .lane { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--plane); }
+  .lane.mine { border-color: var(--series); box-shadow: inset 0 0 0 1px var(--series); }
+  .lane-h { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+  .lane-h .gi { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lane-h .who { margin-left: auto; color: var(--ink-2); font-size: 11px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lane-h .who.me { color: var(--series); font-weight: 600; }
+  .lane-h .who.free { color: var(--muted); }
+  .minibar { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+  .minibar > i { display: block; height: 100%; border-radius: 3px; background: var(--series); }
+  .minibar > i.warn { background: var(--serious); }
+  .minibar > i.crit { background: var(--critical); }
+  .lane-f { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  /* Cluster occupancy heat-strip */
+  .occ { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .occ .n { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--surface); }
+  .occ .n.free { border-color: var(--good); }
+  .occ .n.full { opacity: .6; }
+  .occ .n .nn { font-weight: 600; font-size: 12px; font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; }
+  .occ .n .dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .occ .n .d { width: 10px; height: 10px; border-radius: 3px; background: var(--grid); }
+  .occ .n .d.used { background: var(--baseline); }
+  .occ .n .d.mine { background: var(--series); }
+  .occ .n .cnt { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .occ .n .cnt b { color: var(--good); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>SLURM GPU Monitor</h1>
+    <span class="stamp" id="stamp">연결 중…</span>
+    <button id="refresh">새로고침</button>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div id="body"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+
+function hms(sec) {
+  if (sec == null) return "—";
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간`;
+  if (h) return `${h}시간 ${m}분`;
+  if (m) return `${m}분`;
+  return `${sec}초`;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// "NVIDIA RTX PRO 6000 Blackwell Server Edition" -> "RTX PRO 6000"
+const shortGpu = (n) => String(n).replace(/^NVIDIA\s+/, "").replace(/\s+(Blackwell|Ada Generation|Server Edition)/g, "").trim();
+
+// Status is never color-alone: every pill carries an icon and a word.
+function status(gpu) {
+  const n = (gpu.procs || []).length;
+  if (!n) return { cls: "off", icon: "●", text: "IDLE" };
+  if ((gpu.util ?? 0) < 20) return { cls: "low", icon: "◐", text: "LOW " + gpu.util + "%" };
+  return { cls: "on", icon: "●", text: "ACTIVE" };
+}
+
+function sparkline(vals) {
+  if (!vals || vals.length < 2) return `<div class="spark"><div class="cap"><span>최근 1시간</span><span>데이터 수집 중…</span></div></div>`;
+  const w = 100, h = 30, n = vals.length;
+  const x = (i) => (i / (n - 1)) * w;
+  const y = (v) => h - (Math.max(0, Math.min(100, v)) / 100) * h;
+  const line = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const avg = Math.round(vals.reduce((a, b) => a + b, 0) / n);
+  const pts = vals.map((v, i) => `${x(i).toFixed(2)}:${v}`).join(",");
+  return `
+    <div class="spark" data-pts="${pts}" data-n="${n}">
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <path d="${area}" fill="var(--series-soft)" opacity=".45"/>
+        <path d="${line}" fill="none" stroke="var(--series)" stroke-width="2"
+              vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+        <line class="cross" x1="0" y1="0" x2="0" y2="${h}" stroke="var(--baseline)"
+              stroke-width="1" vector-effect="non-scaling-stroke" opacity="0"/>
+      </svg>
+      <div class="cap"><span>최근 ${n}회 (~1시간) util</span><span>평균 ${avg}%</span></div>
+      <div class="tip"></div>
+    </div>`;
+}
+
+function gpuCard(job, gpu) {
+  if (gpu.error) {
+    return `<div class="card"><div class="card-top"><span class="jobid">${esc(job.jobid)}</span>
+      <span class="where">${esc(gpu.node)}</span></div>
+      <div class="err">수집 실패: ${esc(gpu.error)}</div></div>`;
+  }
+  const st = status(gpu);
+  const util = gpu.util ?? 0;
+  const memPct = gpu.mem_total ? Math.round((gpu.mem_used / gpu.mem_total) * 100) : 0;
+  const utilCls = st.cls === "off" ? "crit" : st.cls === "low" ? "warn" : "";
+
+  const procs = (gpu.procs || []).map((p, i) => `
+    <div class="proc" onclick="this.classList.toggle('expanded')">
+      <span class="meta">${esc(p.user)} · pid ${p.pid} · ${hms(p.etimes)} · GPU ${(p.gpu_mem / 1024).toFixed(1)}GB · CPU ${p.pcpu}%</span>
+      <code>${esc(p.cmd)}</code>
+    </div>`).join("");
+
+  const idleBlock = `
+    <div class="empty">
+      <div class="why">GPU를 잡아만 두고 ${gpu.idle_for == null ? "계속" : hms(gpu.idle_for) + "째"} 비어 있습니다</div>
+      <div class="cmd">
+        <code>srun --jobid=${esc(job.jobid)} --pty bash</code>
+        <button onclick="navigator.clipboard.writeText('srun --jobid=${esc(job.jobid)} --pty bash')">복사</button>
+      </div>
+    </div>`;
+
+  return `
+  <div class="card ${st.cls === "off" ? "idle" : ""}">
+    <div class="card-top">
+      <span class="jobid">${esc(job.jobid)}</span>
+      <span class="where">${esc(gpu.node)} · GPU ${gpu.idx}</span>
+      <span class="chip">${esc(shortGpu(gpu.name))}</span>
+      <span class="chip">${esc(job.elapsed)}</span>
+      ${gpu.smi_idx !== gpu.idx ? `<span class="chip" title="Slurm의 GRES IDX는 /dev/nvidia 마이너 번호라 nvidia-smi 인덱스와 다릅니다. 노드에 직접 ssh해서 볼 땐 이 번호입니다.">smi idx ${gpu.smi_idx}</span>` : ""}
+      ${gpu.idx_unverified ? `<span class="chip" style="color:var(--serious)">매핑 미검증</span>` : ""}
+      <span class="pill ${st.cls}">${st.icon} ${st.text}</span>
+    </div>
+    <div class="row"><span class="k">util</span>
+      <span class="bar"><i class="${utilCls}" style="width:${util}%"></i></span>
+      <span class="v">${util}%</span></div>
+    <div class="row"><span class="k">mem</span>
+      <span class="bar"><i class="${memPct > 90 ? "warn" : ""}" style="width:${memPct}%"></i></span>
+      <span class="v">${(gpu.mem_used / 1024).toFixed(1)} / ${(gpu.mem_total / 1024).toFixed(0)} GB</span></div>
+    ${sparkline(gpu.spark)}
+    ${procs ? `<div class="procs">${procs}</div>` : idleBlock}
+  </div>`;
+}
+
+function utilCls(u) { return u == null ? "" : u < 5 ? "crit" : u < 20 ? "warn" : ""; }
+
+// Whole-node view: every GPU on a node I have a job on, and who is on each.
+// This is the only place other users are visible -- ps on the node reveals them.
+function sharedNodeView(nodes) {
+  if (!nodes || !nodes.length) return "";
+  const cards = nodes.map(nd => {
+    const lanes = nd.gpus.map(g => {
+      const util = g.util ?? 0;
+      const users = [...new Set((g.procs || []).map(p => p.user))];
+      const memPct = g.mem_total ? Math.round((g.mem_used / g.mem_total) * 100) : 0;
+      let who, cls;
+      if (g.mine && users.length) { who = "나" + (users.length > 1 ? ` +${users.length - 1}` : ""); cls = "me"; }
+      else if (g.mine) { who = "나 (유휴)"; cls = "me"; }
+      else if (!users.length) { who = "여유"; cls = "free"; }
+      else { who = users.join(", "); cls = ""; }
+      return `
+        <div class="lane ${g.mine ? "mine" : ""}">
+          <div class="lane-h"><span class="gi">GPU ${g.idx}</span>
+            <span class="who ${cls}" title="${esc(who)}">${esc(who)}</span></div>
+          <div class="minibar"><i class="${utilCls(util)}" style="width:${util}%"></i></div>
+          <div class="lane-f"><span>util ${util}%</span><span>${(g.mem_used / 1024).toFixed(0)}/${(g.mem_total / 1024).toFixed(0)}G</span></div>
+        </div>`;
+    }).join("");
+    const free = nd.gpus.filter(g => !(g.procs || []).length).length;
+    const otherTxt = nd.others && nd.others.length
+      ? `함께 쓰는 사람: ${nd.others.map(esc).join(", ")}` : "이 노드는 지금 나 혼자 씁니다";
+    return `
+      <div class="node">
+        <div class="node-top"><span class="nm">${esc(nd.node)}</span>
+          <span class="chip">GPU ${nd.gpus.length}장</span>
+          <span class="chip">여유 ${free}</span>
+          <span class="where" style="margin-left:auto">${otherTxt}</span></div>
+        <div class="lanes">${lanes}</div>
+      </div>`;
+  }).join("");
+  return `<div class="section">같은 노드를 함께 쓰는 사람들 <span class="note">— 내 잡이 있는 노드는 노드 전체(다른 사용자 포함)가 보입니다</span></div>${cards}`;
+}
+
+// Cluster-wide occupancy. Slurm only tells us counts here (PrivateData=jobs hides
+// who; no ssh without a job means no real util) -- so this is allocation, not use.
+function clusterView(cluster, myByNode) {
+  if (!cluster || !cluster.length) return "";
+  const cards = cluster.map(c => {
+    const mine = myByNode[c.node] || 0;
+    const dots = Array.from({ length: c.gpu_total }, (_, i) =>
+      i < mine ? `<span class="d mine" title="내 GPU"></span>`
+        : i < c.gpu_alloc ? `<span class="d used"></span>`
+          : `<span class="d"></span>`).join("");
+    const cls = c.gpu_free > 0 ? "free" : c.gpu_alloc >= c.gpu_total ? "full" : "";
+    return `
+      <div class="n ${cls}">
+        <div class="nn"><span>${esc(c.node)}</span><span>${esc(c.model || "")}</span></div>
+        <div class="dots">${dots}</div>
+        <div class="cnt">${c.gpu_free > 0 ? `<b>여유 ${c.gpu_free}</b> / ` : ""}${c.gpu_alloc}/${c.gpu_total} 사용</div>
+      </div>`;
+  }).join("");
+  const totFree = cluster.reduce((a, c) => a + c.gpu_free, 0);
+  return `<div class="section">클러스터 GPU 점유 현황 <span class="note">— Slurm 할당 기준(누가/실사용률은 정책상 안 보임) · 여유 GPU 총 ${totFree}장</span></div><div class="occ">${cards}</div>`;
+}
+
+function render(s) {
+  const snap = s.snapshot;
+  if (s.error) $("#stamp").innerHTML = `<span class="err">폴링 실패: ${esc(s.error)}</span>`;
+  if (!snap) { $("#body").innerHTML = `<div class="section">아직 스냅샷이 없습니다.</div>`; return; }
+
+  const running = snap.jobs.filter(j => j.state === "RUNNING");
+  const pending = snap.jobs.filter(j => j.state !== "RUNNING");
+  const gpus = running.flatMap(j => (j.gpus || []).filter(g => !g.error).map(g => ({ job: j, g })));
+
+  const idle = gpus.filter(({ g }) => !(g.procs || []).length);
+  const active = gpus.length - idle.length;
+  const avg = gpus.length ? Math.round(gpus.reduce((a, { g }) => a + (g.util || 0), 0) / gpus.length) : 0;
+  // Wasted GPU-hours: how long each empty GPU has been held with nothing on it.
+  // idle_for is null until the monitor has actually seen that GPU busy at least
+  // once, so those GPUs are counted as unknown rather than as zero.
+  const measured = idle.filter(({ g }) => g.idle_for != null);
+  const wasted = measured.reduce((a, { g }) => a + g.idle_for, 0) / 3600;
+  const unknown = idle.length - measured.length;
+
+  if (!s.error) {
+    const age = Math.round((Date.now() / 1000) - s.polled_at);
+    $("#stamp").textContent = `${age}초 전 갱신 · ${s.poll_ms}ms · 자동 ${s.interval || 15}초`;
+  }
+
+  $("#tiles").innerHTML = `
+    <div class="tile"><div class="label">할당된 GPU</div><div class="value">${gpus.length}</div>
+      <div class="sub">${running.length}개 잡${pending.length ? ` · 대기 ${pending.length}` : ""}</div></div>
+    <div class="tile"><div class="label">가동 중</div><div class="value" style="color:var(--good)">${active}</div>
+      <div class="sub">프로세스가 올라간 GPU</div></div>
+    <div class="tile"><div class="label">유휴</div><div class="value" style="color:${idle.length ? "var(--critical)" : "var(--ink)"}">${idle.length}</div>
+      <div class="sub">${idle.length ? "지금 바로 쓸 수 있음" : "낭비 없음"}</div></div>
+    <div class="tile"><div class="label">평균 util</div><div class="value">${avg}%</div>
+      <div class="sub">할당 GPU 전체 평균</div></div>
+    <div class="tile"><div class="label">놀린 시간</div>
+      <div class="value">${measured.length ? wasted.toFixed(1) : "—"}<span style="font-size:15px;color:var(--ink-2)">${measured.length ? " GPU·h" : ""}</span></div>
+      <div class="sub">${unknown ? `${unknown}개는 측정 이력 없음` : "모니터 시작 이후 누적"}</div></div>`;
+
+  let html = "";
+  const order = [...gpus].sort((a, b) => (a.g.procs?.length ? 1 : 0) - (b.g.procs?.length ? 1 : 0) || (a.g.util || 0) - (b.g.util || 0));
+  html += `<div class="grid">${order.map(({ job, g }) => gpuCard(job, g)).join("")}</div>`;
+
+  const broken = running.flatMap(j => (j.gpus || []).filter(g => g.error).map(g => gpuCard(j, g)));
+  if (broken.length) html += `<div class="section">수집 실패</div><div class="grid">${broken.join("")}</div>`;
+
+  if (pending.length) {
+    html += `<div class="section">대기 중</div><div class="grid">` + pending.map(j => `
+      <div class="card"><div class="card-top">
+        <span class="jobid">${esc(j.jobid)}</span><span class="chip">${esc(j.partition)}</span>
+        <span class="chip">${esc(j.tres)}</span><span class="pill low">${"○"} ${esc(j.state)}</span>
+      </div><div class="err" style="color:var(--ink-2)">${esc(j.reason)}</div></div>`).join("") + `</div>`;
+  }
+  const myByNode = {};
+  (snap.shared_nodes || []).forEach(nd => { myByNode[nd.node] = (nd.my_idx || []).length; });
+  html += sharedNodeView(snap.shared_nodes);
+  html += clusterView(snap.cluster, myByNode);
+
+  $("#body").innerHTML = html;
+  window.__gpumonInterval = s.interval || 15;
+  wireSparks();
+}
+
+function wireSparks() {
+  document.querySelectorAll(".spark[data-pts]").forEach(el => {
+    const pts = el.dataset.pts.split(",").map(p => p.split(":").map(Number));
+    const svg = el.querySelector("svg"), cross = el.querySelector(".cross"), tip = el.querySelector(".tip");
+    const n = pts.length;
+    el.addEventListener("pointermove", (e) => {
+      const r = svg.getBoundingClientRect();
+      const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      const i = Math.round(frac * (n - 1));
+      const [vx, val] = pts[i];
+      cross.setAttribute("x1", vx); cross.setAttribute("x2", vx);
+      cross.style.opacity = 1;
+      const minsAgo = Math.round((n - 1 - i) * ((window.__gpumonInterval || 15) / 60));
+      tip.textContent = `${val}%  ·  ${minsAgo ? minsAgo + "분 전" : "지금"}`;
+      tip.style.left = (r.width * (vx / 100)) + "px";
+      tip.style.top = "0px";
+      tip.style.opacity = 1;
+    });
+    el.addEventListener("pointerleave", () => { cross.style.opacity = 0; tip.style.opacity = 0; });
+  });
+}
+
+async function tick() {
+  try {
+    const r = await fetch("/api/state");
+    render(await r.json());
+  } catch (e) {
+    $("#stamp").innerHTML = `<span class="err">서버 연결 끊김</span>`;
+  }
+}
+$("#refresh").onclick = async () => { await fetch("/api/refresh"); setTimeout(tick, 1200); };
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

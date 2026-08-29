@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1024px; height: 1024px; background: transparent; }
+  .tile {
+    position: absolute; inset: 60px;              /* macOS icons sit inset in their canvas */
+    border-radius: 200px;
+    background: linear-gradient(150deg, #1f2a3a 0%, #12161e 100%);
+    box-shadow: inset 0 4px 0 rgba(255,255,255,.10);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 190px; gap: 42px;
+  }
+  /* Utilization bars: three busy, one empty -- the thing the app is for. */
+  .bar { width: 74px; border-radius: 14px; background: #2a78d6; }
+  .b1 { height: 300px; }
+  .b2 { height: 430px; background: #0ca30c; }
+  .b3 { height: 210px; }
+  .b4 { height: 74px; background: #3a4351; }
+  .cap {
+    position: absolute; top: 190px; left: 0; right: 0; text-align: center;
+    color: #c3c2b7; font: 600 96px system-ui, sans-serif; letter-spacing: 6px;
+  }
+</style>
+<div class="tile">
+  <div class="cap">GPU</div>
+  <div class="bar b1"></div>
+  <div class="bar b2"></div>
+  <div class="bar b3"></div>
+  <div class="bar b4"></div>
+</div>
