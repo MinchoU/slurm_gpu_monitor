@@ -25,7 +25,10 @@
   body {
     margin: 0; padding: 24px; background: var(--plane); color: var(--ink);
     font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* everything is meant to be draggable/copyable (job ids, node names, cmdlines) */
+    -webkit-user-select: text; user-select: text;
   }
+  button { -webkit-user-select: none; user-select: none; }
   h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
   .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .stamp { color: var(--muted); font-size: 12px; }
@@ -145,6 +148,13 @@ function hms(sec) {
   if (m) return `${m}분`;
   return `${sec}초`;
 }
+// text-drag inside a proc row ends with a click; expanding/collapsing then would
+// wipe the selection the user just made
+function toggleProc(el) {
+  if (String(window.getSelection())) return;
+  el.classList.toggle("expanded");
+}
+
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // "NVIDIA RTX PRO 6000 Blackwell Server Edition" -> "RTX PRO 6000"
@@ -193,7 +203,7 @@ function gpuCard(job, gpu) {
   const utilCls = st.cls === "off" ? "crit" : st.cls === "low" ? "warn" : "";
 
   const procs = (gpu.procs || []).map((p, i) => `
-    <div class="proc" onclick="this.classList.toggle('expanded')">
+    <div class="proc" onclick="toggleProc(this)">
       <span class="meta">${esc(p.user)} · pid ${p.pid} · ${hms(p.etimes)} · GPU ${(p.gpu_mem / 1024).toFixed(1)}GB · CPU ${p.pcpu}%</span>
       <code>${esc(p.cmd)}</code>
     </div>`).join("");

@@ -136,6 +136,7 @@
     self.status.alignment = NSTextAlignmentCenter;
     self.status.textColor = NSColor.secondaryLabelColor;
     self.status.font = [NSFont systemFontOfSize:13];
+    self.status.selectable = YES;
     self.status.maximumNumberOfLines = 4;
     self.status.translatesAutoresizingMaskIntoConstraints = NO;
     [content addSubview:self.status];
@@ -295,6 +296,7 @@
     self.testResult.font = [NSFont fontWithName:@"Menlo" size:11] ?: [NSFont systemFontOfSize:11];
     self.testResult.textColor = NSColor.secondaryLabelColor;
     self.testResult.maximumNumberOfLines = 6;
+    self.testResult.selectable = YES;
     self.testResult.translatesAutoresizingMaskIntoConstraints = NO;
 
     NSButton *test = [NSButton buttonWithTitle:@"연결 테스트" target:self
@@ -412,6 +414,16 @@
     [appMenu addItemWithTitle:@"종료" action:@selector(terminate:) keyEquivalent:@"q"];
     appItem.submenu = appMenu;
     [main addItem:appItem];
+
+    NSMenuItem *editItem = [[NSMenuItem alloc] init];
+    NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"편집"];
+    [editMenu addItemWithTitle:@"잘라내기" action:@selector(cut:) keyEquivalent:@"x"];
+    [editMenu addItemWithTitle:@"복사" action:@selector(copy:) keyEquivalent:@"c"];
+    [editMenu addItemWithTitle:@"붙여넣기" action:@selector(paste:) keyEquivalent:@"v"];
+    [editMenu addItem:[NSMenuItem separatorItem]];
+    [editMenu addItemWithTitle:@"전체 선택" action:@selector(selectAll:) keyEquivalent:@"a"];
+    editItem.submenu = editMenu;
+    [main addItem:editItem];
 
     NSMenuItem *viewItem = [[NSMenuItem alloc] init];
     NSMenu *viewMenu = [[NSMenu alloc] initWithTitle:@"보기"];
