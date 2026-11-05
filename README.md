@@ -38,7 +38,7 @@ cd ~/gpu-monitor
 
 1. **macOS 앱**: `GPU Monitor.app` 실행 → 초기 설정 화면에서 SSH host 입력
    → "연결 테스트" → "저장하고 시작"
-2. **터미널**: `./setup.sh`
+2. **터미널**: `./setup.sh` (Windows: `setup.cmd` 더블클릭, 또는 `py -3 setup.py`)
 3. **직접 작성**: `~/.config/gpumonitor/config.json`
    ```json
    {
@@ -56,6 +56,12 @@ cd ~/gpu-monitor
 | `port` | 대시보드 포트 (차질이 있으면 다음 포트 자동 시도) | `8777` |
 | `nodes` | **직접** ssh되는 스탠드얼론 GPU 노드 목록 (Slurm 밖 머신) | 없음 |
 | `repo` | (앱 전용) 이 리포지토리가 있는 경로 | `~/gpu-monitor` |
+| `name` | 기본 클러스터 표시 이름 | `host` 값 |
+| `clusters` | 추가 Slurm 클러스터 목록 (아래) | 없음 |
+| `summaries` | GPU별 run을 Claude Code(`claude -p`)로 한 줄 요약 | `true` |
+| `summary_model` | 요약에 쓸 모델 | `haiku` |
+| `summary_refresh_min` | 요약(진행 상황) 갱신 주기(분) | `30` |
+| `claude` | claude CLI 경로 (PATH에서 못 찾을 때) | 자동 탐색 |
 
 `nodes` 예시 — Slurm 클러스터에 속하지 않고 ssh alias로만 접속되는 GPU 머신
 (RLLab box 등)을 함께 보고 싶으면:
@@ -68,17 +74,56 @@ cd ~/gpu-monitor
 사용자를 봅니다. alias에 `RemoteCommand`/`RequestTTY`가 설정돼 있으면 자동으로
 중립화합니다.
 
+`clusters` 예시 — 다른 Slurm 클러스터(RLLab: node01/node100/node200)를 함께 보기:
+
+```json
+{ "host": "ai", "name": "Yonsei AI",
+  "clusters": [{ "name": "RLLab", "host": "node1" }] }
+```
+
+`host`는 그 클러스터의 아무 노드 ssh alias. collect.py를 배포하지 않고 매 폴링마다
+ssh stdin(heredoc)으로 흘려 보내므로 `RemoteCommand bash -l` alias나 명령줄 실행이
+안 되는 노드(node200)에서도 동작. 기본 `"whole_cluster": true` — `PrivateData=none`
+클러스터라 모든 GPU 노드를 프로브하고 GPU마다 누가 어떤 잡으로 잡고 있는지 표시
+(`"python"` 키로 원격 python 지정 가능, 기본 `python3`).
+
+**Run 요약:** 내 GPU에 프로세스가 올라가 있으면 잡 이름·커맨드라인·잡 스크립트·
+Slurm 로그 끝부분·작업 디렉터리를 모아 로컬 `claude -p --model haiku --tools ""`
+에 넘겨 "무엇을 하는 run인지 / 진행 상황" 한 줄씩 받아 카드에 표시. 잡+pid 단위로
+`history.db`에 캐시하고 `summary_refresh_min`마다 갱신. 로그 내용이 Claude로
+전송된다는 점에 유의.
+
 `host`만 있어야 동작하고, 나머지는 기본값 사용.
 CLI 인자(`--host` 등)는 설정 파일보다 우선한다.
 
 ## 실행
 
-- **터미널 (모든 OS)**: `./run.sh` (설정값 사용, 브라우저 자동 열림)
-  - macOS / Linux / Windows(Git Bash, WSL2) 모두 가능 — `python3`만 있으면 됨
-  - Linux에서 `python3`가 아니라면 `python server.py` 로 직접 실행
+- **macOS / Linux**: `./run.sh` (설정값 사용, 브라우저 자동 열림)
+- **Windows**: `run.cmd` 더블클릭 (콘솔 창을 닫으면 종료). 아래 "Windows" 참고
+- 어디서든: `python3 server.py --open`
 - **옵션**: `python3 server.py --host ai --interval 30 --port 8765`
 - **연결 테스트**: `python3 server.py --test` (한 번 폴링 후 종료)
 - **macOS 앱**: 아래 빌드 후 `GPU Monitor.app` 실행 (설정 메뉴 ⌘, 로 변경)
+
+## Windows
+
+필요한 것: Python 3.8+ ([python.org](https://www.python.org/downloads/) 설치 시
+"py launcher" 포함), Windows 내장 OpenSSH 클라이언트(`ssh`/`scp`, Windows 10 1809+ 기본).
+
+1. PowerShell에서 키 생성·등록 (이미 되어 있으면 생략)
+   ```powershell
+   ssh-keygen -t ed25519
+   type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh <user>@<login-node> "cat >> ~/.ssh/authorized_keys"
+   ```
+2. `%USERPROFILE%\.ssh\config` 에 alias 등록 (macOS와 같은 문법, `ProxyJump` 가능)
+3. `ssh -o BatchMode=yes <alias> echo ok` 가 `ok`를 출력하는지 확인
+4. `setup.cmd` → `run.cmd`
+
+설정 파일 위치는 `%USERPROFILE%\.config\gpumonitor\config.json`.
+Windows OpenSSH는 ControlMaster(연결 재사용)를 지원하지 않아 폴링마다 새로 접속합니다
+(폴링당 1~2초 더 걸릴 뿐 기능은 같음). 할당 변경 알림은 브라우저 알림(Web
+Notification)으로 뜹니다. GPU별 run 요약은 `claude` CLI가 PATH에 있을 때만 동작합니다.
+바탕화면 바로가기를 원하면 `run.cmd` 의 바로가기를 만들면 됩니다.
 
 ## macOS 앱 빌드 (선택, macOS 전용)
 
@@ -94,7 +139,7 @@ Xcode Command Line Tools와 Chrome(아이콘 렌더링용)이 필요합니다.
 
 1. `server.py`(로컬)가 `ssh <host> python3 <remote>` 로 수집 스크립트를 실행
    - 시작할 때 `collect.py` 를 자동으로 scp 재배포
-   - ssh ControlMaster로 폴링당 연결 ~0.3s
+   - ssh ControlMaster로 폴링당 연결 ~0.3s (Windows는 미지원 → 매번 새 연결)
 2. `collect.py`(로그인 노드)가
    - `squeue`/`scontrol` 로 내 잡 + 물리 GPU 인덱스 수집
    - 잡이 있는 각 노드로 ssh → `nvidia-smi` + `ps` 로 실사용률/프로세스/공유 사용자 수집

@@ -38,6 +38,9 @@
     cursor: pointer;
   }
   button:hover { color: var(--ink); }
+  .toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px;
+            color: var(--ink-2); cursor: pointer; -webkit-user-select: none; user-select: none; }
+  .toggle input { accent-color: var(--series); margin: 0; cursor: pointer; }
 
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
@@ -51,7 +54,12 @@
   .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .jobid { font-weight: 600; font-variant-numeric: tabular-nums; }
   .where { color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .chip { font-size: 11px; color: var(--ink-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .chip.sys { font-variant-numeric: tabular-nums; }
+  .chip.sys .dim { color: var(--muted); }
+  .chip.sys.warn { border-color: var(--warning); color: var(--ink); }
+  .chip.sys.crit { border-color: var(--critical); color: var(--critical); }
+  .chip { font-size: 11px; color: var(--ink-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px;
+          max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pill { margin-left: auto; flex: none; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; display: flex; align-items: center; gap: 4px; }
   .pill.on  { color: var(--good);     background: color-mix(in srgb, var(--good) 14%, transparent); }
   .pill.low { color: var(--serious);  background: color-mix(in srgb, var(--serious) 16%, transparent); }
@@ -125,6 +133,95 @@
   .occ .n .d.mine { background: var(--series); }
   .occ .n .cnt { color: var(--muted); font-size: 11px; margin-top: 6px; }
   .occ .n .cnt b { color: var(--good); font-weight: 600; }
+
+  /* Claude's one-line "what is this run" summary on each GPU card */
+  .sum { border-left: 3px solid var(--accent, var(--series)); background: var(--plane); border-radius: 0 6px 6px 0;
+         padding: 6px 10px; margin: -2px 0 12px; font-size: 12px; }
+  .sum .s { color: var(--ink); font-weight: 600; }
+  .sum .p { color: var(--ink-2); margin-top: 1px; }
+  .sum .t { color: var(--muted); font-size: 10px; }
+  .sum.pending { border-left-color: var(--baseline); color: var(--muted); }
+  .lane .job { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+  .lane.held { background: var(--surface); }
+
+  /* One colored panel per Slurm cluster */
+  :root { --c-yonsei: #2453a6; --c-rllab: #8a4fd0; --c-other: #0f8f84; }
+  @media (prefers-color-scheme: dark) { :root { --c-yonsei: #5b8ff0; --c-rllab: #b48af0; --c-other: #3cc2b5; } }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs button { font-size: 13px; padding: 5px 14px; border-radius: 999px; }
+  .tabs button.on { color: #fff; background: var(--accent, var(--ink)); border-color: transparent; }
+  .tabs button .n { opacity: .75; font-size: 11px; margin-left: 4px; }
+  .panel { --accent: var(--c-other); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+           border-top: 4px solid var(--accent); border-radius: 12px; padding: 16px 18px 6px; margin-bottom: 26px;
+           background: color-mix(in srgb, var(--accent) 4%, var(--plane)); }
+  .panel-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .panel-h h2 { font-size: 17px; margin: 0; color: var(--accent); }
+  .panel .card { border-top: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); }
+  .panel .card.idle { border-color: var(--critical); border-top-color: var(--critical); }
+  .tier { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .tier .vr { color: #fff; background: var(--accent); border-radius: 5px; padding: 0 7px; font-size: 12px; }
+  .tier .models { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .tier:first-child { margin-top: 0; }
+  .sub-h { color: var(--muted); font-size: 12px; margin: 22px 0 8px; padding-top: 12px; border-top: 1px dashed var(--grid); }
+
+  /* stop / release */
+  .rel { margin-left: 6px; font-size: 11px; padding: 2px 8px; }
+  .rel:hover { color: var(--critical); border-color: var(--critical); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: flex-start;
+              justify-content: center; padding: 8vh 16px; z-index: 10; overflow: auto; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px;
+           width: min(720px, 100%); box-shadow: 0 10px 40px rgba(0,0,0,.25); font-size: 13px; }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; }
+  .modal .act { margin: 12px 0 4px; font-weight: 600; font-size: 12px; }
+  .modal .act.stop { color: var(--critical); }
+  .modal .act.skip { color: var(--muted); }
+  .modal .it { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 4px; background: var(--plane); }
+  .modal .it code { display: block; font-size: 11px; color: var(--ink-2); word-break: break-all; margin-top: 2px; }
+  .modal .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  .modal .btns button { font-size: 13px; padding: 6px 14px; }
+  .modal .btns .danger { color: #fff; background: var(--critical); border-color: transparent; }
+  .modal .btns .warnb { color: var(--critical); border-color: var(--critical); }
+  /* background tasks */
+  .taskbar { display: flex; gap: 6px; flex-wrap: wrap; margin: -6px 0 14px; }
+  .task { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+          background: var(--surface); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .task.running { border-color: var(--warning); }
+  .task.done { color: var(--good); }
+  .task.failed { color: var(--critical); border-color: var(--critical); }
+  .task .x { color: var(--muted); margin-left: 2px; }
+  .spin { width: 10px; height: 10px; border: 2px solid var(--warning); border-right-color: transparent;
+          border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .pill.busy { color: var(--serious); background: color-mix(in srgb, var(--warning) 18%, transparent); }
+  .card.releasing { opacity: .75; }
+  .primary { color: #fff !important; background: var(--series); border-color: transparent; }
+
+  /* GPU request form */
+  .form { display: grid; grid-template-columns: 110px 1fr; gap: 10px 12px; align-items: center; margin-top: 12px; }
+  .form label { color: var(--ink-2); font-size: 12px; }
+  .form select, .form input { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px;
+          border: 1px solid var(--border); background: var(--plane); color: var(--ink); width: 100%; }
+  .form .hint { grid-column: 2; color: var(--muted); font-size: 11px; margin-top: -6px; }
+  .form .row2 { display: flex; gap: 8px; align-items: center; }
+  .form .row2 input { width: 90px; }
+  .form .nb { display: flex; gap: 6px; align-items: center; font-size: 12px; white-space: nowrap; }
+  .form .nb input { width: auto; margin: 0; }
+  .qt { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 8px; }
+  .qt th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  .qt td { padding: 5px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  .qt tr:last-child td { border-bottom: 0; }
+  .qt td.nm { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .qt td.r { color: var(--ink-2); }
+  .qt tr.me td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .qt tr.me td.u { color: var(--accent); font-weight: 600; }
+  .qt.fs { max-width: 640px; }
+  .fsbar { display: inline-block; width: 90px; height: 7px; border-radius: 4px; background: var(--grid); vertical-align: middle; margin-right: 6px; overflow: hidden; }
+  .fsbar i { display: block; height: 100%; background: var(--accent, var(--series)); }
+  .presets { display: flex; gap: 4px; flex-wrap: wrap; }
+  .presets button { font-size: 11px; padding: 2px 8px; }
+  .modal pre { font-size: 11px; background: var(--plane); border: 1px solid var(--border); border-radius: 6px; padding: 8px; white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -132,9 +229,16 @@
     <h1>SLURM GPU Monitor</h1>
     <span class="stamp" id="stamp">연결 중…</span>
     <button id="refresh">새로고침</button>
+    <button id="alloc-btn" class="primary">+ GPU 신청</button>
+    <label class="toggle" title="내 잡에 GPU가 할당·반납되면 macOS 알림">
+      <input type="checkbox" id="notify"> GPU 할당 변경 시 알림
+    </label>
   </div>
+  <div class="taskbar" id="taskbar"></div>
+  <div class="tabs" id="tabs"></div>
   <div class="tiles" id="tiles"></div>
   <div id="body"></div>
+  <div class="modal-bg" id="modal-bg"><div class="modal" id="modal"></div></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -148,23 +252,53 @@ function hms(sec) {
   if (m) return `${m}분`;
   return `${sec}초`;
 }
-// text-drag inside a proc row ends with a click; expanding/collapsing then would
-// wipe the selection the user just made
-function toggleProc(el) {
-  if (String(window.getSelection())) return;
-  el.classList.toggle("expanded");
-}
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Expanded command lines survive re-renders: remembered by key, re-applied on render.
+const expanded = new Set();
+function toggleProc(el) {
+  // text-drag inside a proc row ends with a click; toggling would wipe the selection
+  if (String(window.getSelection())) return;
+  const k = el.dataset.k;
+  expanded.has(k) ? expanded.delete(k) : expanded.add(k);
+  el.classList.toggle("expanded", expanded.has(k));
+}
 
 // "NVIDIA RTX PRO 6000 Blackwell Server Edition" -> "RTX PRO 6000"
 const shortGpu = (n) => String(n).replace(/^NVIDIA\s+/, "").replace(/\s+(Blackwell|Ada Generation|Server Edition)/g, "").trim();
+
+// ---- VRAM tiers -------------------------------------------------------------
+// GPUs we have probed report memory.total; for nodes we can't reach (cluster
+// occupancy view) fall back to the Slurm GRES model name.
+const VRAM_BY_MODEL = { rtx3090: 24, rtx4090: 24, a5000: 24, titanrtx: 24, a6000: 48, rtx6000ada: 48, "6000ada": 48,
+  l40s: 48, l40: 48, a40: 48, a100: 80, h100: 80, rtxpro6000: 96, b200: 180, h200: 141 };
+const modelKey = (m) => String(m || "").toLowerCase().replace(/^nvidia/, "").replace(/geforce|blackwell|servereedition|serveredition|generation/g, "").replace(/[^a-z0-9]/g, "");
+const learnedVram = {};
+function vramOfMiB(mib) {
+  const g = mib / 1024;
+  for (const b of [11, 12, 16, 24, 32, 40, 48, 80, 96, 141, 180]) if (g <= b * 1.03) return b;
+  return Math.round(g);
+}
+function vramOfModel(m) { const k = modelKey(m); return learnedVram[k] ?? VRAM_BY_MODEL[k] ?? null; }
+function learnVram(gpus) {
+  for (const g of gpus) if (g.name && g.mem_total) learnedVram[modelKey(shortGpu(g.name))] = vramOfMiB(g.mem_total);
+}
+// group items by tier, largest VRAM first; key(item) -> GB or null
+function byTier(items, key) {
+  const m = new Map();
+  for (const it of items) { const k = key(it); if (!m.has(k)) m.set(k, []); m.get(k).push(it); }
+  return [...m.entries()].sort((a, b) => (b[0] ?? -1) - (a[0] ?? -1));
+}
+const tierHead = (gb, models, extra = "") =>
+  `<div class="tier"><span class="vr">${gb == null ? "VRAM ?" : gb + "GB"}</span>
+     <span class="models">${esc([...new Set(models)].join(" · "))}</span>${extra}</div>`;
 
 // Status is never color-alone: every pill carries an icon and a word.
 function status(gpu) {
   const n = (gpu.procs || []).length;
   if (!n) return { cls: "off", icon: "●", text: "IDLE" };
-  if ((gpu.util ?? 0) < 20) return { cls: "low", icon: "◐", text: "LOW " + gpu.util + "%" };
+  if (gpu.util == null) return { cls: "low", icon: "◐", text: "util N/A" };
+  if (gpu.util < 20) return { cls: "low", icon: "◐", text: "LOW " + gpu.util + "%" };
   return { cls: "on", icon: "●", text: "ACTIVE" };
 }
 
@@ -178,7 +312,7 @@ function sparkline(vals) {
   const avg = Math.round(vals.reduce((a, b) => a + b, 0) / n);
   const pts = vals.map((v, i) => `${x(i).toFixed(2)}:${v}`).join(",");
   return `
-    <div class="spark" data-pts="${pts}" data-n="${n}">
+    <div class="spark" data-pts="${pts}">
       <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
         <path d="${area}" fill="var(--series-soft)" opacity=".45"/>
         <path d="${line}" fill="none" stroke="var(--series)" stroke-width="2"
@@ -191,10 +325,93 @@ function sparkline(vals) {
     </div>`;
 }
 
-function gpuCard(job, gpu) {
+function summaryBlock(gpu) {
+  const sm = gpu.sum_fp && (window.__summaries || {})[gpu.sum_fp];
+  if (!sm) return "";
+  if (sm.error && !sm.summary) return `<div class="sum pending" title="${esc(sm.error)}">요약 실패 — 10분 뒤 재시도 (${esc(sm.error.slice(0, 80))})</div>`;
+  if (!sm.summary) return `<div class="sum pending">Claude가 이 run을 요약하는 중…</div>`;
+  const ago = hms(Date.now() / 1000 - sm.ts);
+  return `<div class="sum" title="Claude Code 요약 · ${ago} 전${sm.pending ? " · 갱신 중" : ""}">
+    <div class="s">${esc(sm.summary)}</div>
+    ${sm.progress ? `<div class="p">${esc(sm.progress)} <span class="t">· ${ago} 전</span></div>` : ""}
+  </div>`;
+}
+
+// Slurm "D-HH:MM:SS" / "HH:MM:SS" / "MM:SS" -> seconds (null for UNLIMITED etc.)
+function slurmSecs(t) {
+  const m = String(t || "").match(/^(?:(\d+)-)?(\d+)(?::(\d+))?(?::(\d+))?$/);
+  if (!m) return null;
+  const parts = [m[2], m[3], m[4]].filter(x => x != null).map(Number);
+  while (parts.length < 3) parts.unshift(0);  // "MM:SS" -> 0:MM:SS
+  return (+(m[1] || 0)) * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2];
+}
+// QOS + time-left chips: red under 3h, amber under 12h
+function jobChips(job) {
+  const left = slurmSecs(job.time_left);
+  const col = left == null ? "" : left < 3 * 3600 ? "color:var(--critical);border-color:var(--critical)"
+    : left < 12 * 3600 ? "color:var(--serious);border-color:var(--serious)" : "";
+  return (job.qos ? `<span class="chip" title="QOS">${esc(job.qos)}</span>` : "") +
+    (job.time_left ? `<span class="chip" style="${col}" title="경과 ${esc(job.elapsed)} / 한도 ${esc(job.time_limit)}">${
+      left == null ? (job.time_left === "UNLIMITED" ? "시간 무제한" : esc(job.time_left)) : "남은 " + hms(left)}</span>` : `<span class="chip">${esc(job.elapsed)}</span>`);
+}
+
+// Fair-share standings (sshare, fair-tree): higher factor = bigger priority boost.
+function fairshareView(fs, me) {
+  if (!fs || !fs.users || !fs.users.length) return "";
+  const w = +fs.weight || 0, n = fs.users.length;
+  const mine = fs.users.find(u => u.user.toLowerCase() === (me || "").toLowerCase());
+  const hl = fs.half_life ? fs.half_life.replace(/^(\d+)-00:00:00$/, "$1일").replace(/^0-/, "") : null;
+  const rows = fs.users.map(u => {
+    const isMe = mine && u === mine;
+    return `<tr class="${isMe ? "me" : ""}" data-k="fs|${esc(u.user)}">
+      <td>${u.rank}</td><td class="u">${esc(u.user)}${isMe ? " (나)" : ""}</td>
+      <td><span class="fsbar"><i style="width:${(u.fairshare * 100).toFixed(1)}%"></i></span> ${u.fairshare.toFixed(3)}</td>
+      <td>${w ? Math.round(u.fairshare * w).toLocaleString() : "—"}</td>
+      <td>${(u.usage * 100).toFixed(1)}%</td></tr>`;
+  }).join("");
+  const note = (mine ? `나: <b>${mine.rank}위</b> / ${n}명` : `${n}명`) +
+    (hl ? ` · 사용량 반감기 ${esc(hl)}` : "") + " · 높을수록 대기열에서 먼저";
+  return `<div class="sub-h">Fair-share 순위 <span class="note">— ${note}</span></div>
+    <div style="overflow-x:auto"><table class="qt fs"><thead><tr><th>#</th><th>사용자</th><th>Fair-share</th>
+      <th title="PriorityWeightFairShare × factor — sprio의 FAIRSHARE 항">우선순위 점수</th><th title="감쇠된 누적 사용량 중 비중 (EffectvUsage)">사용량 비중</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// Everyone's pending jobs (PrivateData=none clusters), in priority order.
+function queueView(queue, me) {
+  if (!queue || !queue.length) return `<div class="sub-h">대기열 (모든 사용자) <span class="note">— 대기 중인 잡 없음</span></div>`;
+  const now = Date.now() / 1000;
+  const rows = queue.map((q, i) => {
+    const waited = q.submit && q.submit !== "N/A" ? hms(now - Date.parse(q.submit) / 1000) : "—";
+    const start = q.start && q.start !== "N/A" ? new Date(q.start).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "미정";
+    const gpu = (q.tres.match(/gpu[^,]*/) || [""])[0].replace(/^gres\/|^gres:/, "");
+    const mine = q.user === me;
+    return `<tr class="${mine ? "me" : ""}" data-k="q|${esc(q.jobid)}">
+      <td>${i + 1}</td><td>${esc(q.jobid)}</td><td class="u">${esc(q.user)}${mine ? " (나)" : ""}</td>
+      <td class="nm" title="${esc(q.name)}">${esc(q.name)}</td><td>${esc(gpu || "—")}</td><td>${esc(q.cpus)}</td>
+      <td>${esc(q.time_limit)}</td><td>${waited}</td><td>${start}</td><td class="r">${esc(q.reason)}</td></tr>`;
+  }).join("");
+  const users = [...new Set(queue.map(q => q.user))];
+  return `<div class="sub-h">대기열 (모든 사용자) <span class="note">— ${queue.length}개 잡 · ${users.length}명 · 우선순위 순 (위가 먼저)</span></div>
+    <div style="overflow-x:auto"><table class="qt"><thead><tr><th>#</th><th>잡</th><th>사용자</th><th>이름</th><th>GPU</th><th>CPU</th>
+      <th>시간 한도</th><th>대기</th><th>예상 시작</th><th>사유</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+const relBtn = (cl, job, label = "정지/반납") => busyTask(cl, job.jobid)
+  ? `<button class="rel" disabled>종료 진행 중…</button>`
+  : `<button class="rel" onclick="openRelease('${esc(cl)}','${esc(job.jobid)}')" title="이 잡의 GPU 프로세스·컨테이너를 끄고 (선택) scancel">${label}</button>`;
+
+// running release task for a job, if any
+function busyTask(cl, jobid) {
+  return (window.__tasks || []).find(t => t.kind === "release" && t.status === "running" &&
+                                         t.cluster === cl && t.jobid === jobid);
+}
+
+function gpuCard(cl, job, gpu) {
+  const key = `${cl}|${gpu.node}|${gpu.idx}`;
+  const busy = busyTask(cl, job.jobid);
   if (gpu.error) {
-    return `<div class="card"><div class="card-top"><span class="jobid">${esc(job.jobid)}</span>
-      <span class="where">${esc(gpu.node)}</span></div>
+    return `<div class="card" data-k="${esc(key)}"><div class="card-top"><span class="jobid">${esc(job.jobid)}</span>
+      <span class="where">${esc(gpu.node)}</span>${relBtn(cl, job)}</div>
       <div class="err">수집 실패: ${esc(gpu.error)}</div></div>`;
   }
   const st = status(gpu);
@@ -202,31 +419,34 @@ function gpuCard(job, gpu) {
   const memPct = gpu.mem_total ? Math.round((gpu.mem_used / gpu.mem_total) * 100) : 0;
   const utilCls = st.cls === "off" ? "crit" : st.cls === "low" ? "warn" : "";
 
-  const procs = (gpu.procs || []).map((p, i) => `
-    <div class="proc" onclick="toggleProc(this)">
-      <span class="meta">${esc(p.user)} · pid ${p.pid} · ${hms(p.etimes)} · GPU ${(p.gpu_mem / 1024).toFixed(1)}GB · CPU ${p.pcpu}%</span>
+  const procs = (gpu.procs || []).map((p) => {
+    const pk = `${key}|${p.pid}`;
+    return `
+    <div class="proc ${expanded.has(pk) ? "expanded" : ""}" data-k="${esc(pk)}" onclick="toggleProc(this)">
+      <span class="meta">${esc(p.user)} · pid ${p.pid ?? "N/A"} · ${hms(p.etimes)} · GPU ${(p.gpu_mem / 1024).toFixed(1)}GB · CPU ${p.pcpu}%</span>
       <code>${esc(p.cmd)}</code>
-    </div>`).join("");
+    </div>`; }).join("");
 
   const idleBlock = `
     <div class="empty">
       <div class="why">GPU를 잡아만 두고 ${gpu.idle_for == null ? "계속" : hms(gpu.idle_for) + "째"} 비어 있습니다</div>
       <div class="cmd">
-        <code>srun --jobid=${esc(job.jobid)} --pty bash</code>
-        <button onclick="navigator.clipboard.writeText('srun --jobid=${esc(job.jobid)} --pty bash')">복사</button>
+        <code>srun --jobid=${esc(job.jobid)} --overlap --pty bash -i</code>
+        <button onclick="navigator.clipboard.writeText('srun --jobid=${esc(job.jobid)} --overlap --pty bash -i')">복사</button>
       </div>
     </div>`;
 
   return `
-  <div class="card ${st.cls === "off" ? "idle" : ""}">
+  <div class="card ${st.cls === "off" && !busy ? "idle" : ""} ${busy ? "releasing" : ""}" data-k="${esc(key)}">
     <div class="card-top">
-      <span class="jobid">${esc(job.jobid)}</span>
+      <span class="jobid" title="${esc(job.name)}">${esc(job.jobid)}</span>
       <span class="where">${esc(gpu.node)} · GPU ${gpu.idx}</span>
       <span class="chip">${esc(shortGpu(gpu.name))}</span>
-      <span class="chip">${esc(job.elapsed)}</span>
+      ${jobChips(job)}
       ${gpu.smi_idx !== gpu.idx ? `<span class="chip" title="Slurm의 GRES IDX는 /dev/nvidia 마이너 번호라 nvidia-smi 인덱스와 다릅니다. 노드에 직접 ssh해서 볼 땐 이 번호입니다.">smi idx ${gpu.smi_idx}</span>` : ""}
       ${gpu.idx_unverified ? `<span class="chip" style="color:var(--serious)">매핑 미검증</span>` : ""}
-      <span class="pill ${st.cls}">${st.icon} ${st.text}</span>
+      ${busy ? `<span class="pill busy"><span class="spin"></span> ${esc(busy.phase)}…</span>`
+             : `<span class="pill ${st.cls}">${st.icon} ${st.text}</span>`}
     </div>
     <div class="row"><span class="k">util</span>
       <span class="bar"><i class="${utilCls}" style="width:${util}%"></i></span>
@@ -234,70 +454,106 @@ function gpuCard(job, gpu) {
     <div class="row"><span class="k">mem</span>
       <span class="bar"><i class="${memPct > 90 ? "warn" : ""}" style="width:${memPct}%"></i></span>
       <span class="v">${(gpu.mem_used / 1024).toFixed(1)} / ${(gpu.mem_total / 1024).toFixed(0)} GB</span></div>
+    ${summaryBlock(gpu)}
     ${sparkline(gpu.spark)}
     ${procs ? `<div class="procs">${procs}</div>` : idleBlock}
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">${relBtn(cl, job)}</div>
   </div>`;
+}
+
+// Host load strip: 1/5/15-min load vs core count, free RAM, and D-state procs
+// (a growing D pile on these nodes means the NFS /home client is wedged).
+function sysChips(sys) {
+  if (!sys) return "";
+  const [l1, l5, l15] = sys.load, pct = Math.round(l1 / sys.ncpu * 100);
+  const lc = pct >= 100 ? "crit" : pct >= 70 ? "warn" : "";
+  const memPct = Math.round((1 - sys.mem_avail_gb / sys.mem_total_gb) * 100);
+  const mc = memPct >= 95 ? "crit" : memPct >= 85 ? "warn" : "";
+  const up = sys.uptime_s >= 86400 ? `${Math.floor(sys.uptime_s / 86400)}일` : `${Math.floor(sys.uptime_s / 3600)}시간`;
+  return `<span class="chip sys ${lc}" title="load average 1/5/15분 · 코어 ${sys.ncpu}개 대비 ${pct}%">부하 ${l1.toFixed(1)} / ${l5.toFixed(1)} / ${l15.toFixed(1)} <span class="dim">(${pct}%)</span></span>
+        <span class="chip sys ${mc}" title="사용 중 메모리 (MemTotal − MemAvailable)">RAM ${Math.round(sys.mem_total_gb - sys.mem_avail_gb)}/${Math.round(sys.mem_total_gb)}G</span>
+        ${sys.dstate > 0 ? `<span class="chip sys ${sys.dstate >= 20 ? "crit" : "warn"}" title="D-state(I/O 대기로 멈춘) 프로세스 수 — 계속 늘면 NFS /home 멈춤 의심">D ${sys.dstate}</span>` : ""}
+        <span class="chip sys" title="uptime">up ${up}</span>`;
 }
 
 function utilCls(u) { return u == null ? "" : u < 5 ? "crit" : u < 20 ? "warn" : ""; }
 
-// Whole-node view: every GPU on a node I have a job on, and who is on each.
-// This is the only place other users are visible -- ps on the node reveals them.
-function sharedNodeView(nodes) {
-  if (!nodes || !nodes.length) return "";
-  const cards = nodes.map(nd => {
-    const lanes = nd.gpus.map(g => {
-      const util = g.util ?? 0;
-      const users = [...new Set((g.procs || []).map(p => p.user))];
-      const memPct = g.mem_total ? Math.round((g.mem_used / g.mem_total) * 100) : 0;
-      let who, cls;
-      if (g.mine && users.length) { who = "나" + (users.length > 1 ? ` +${users.length - 1}` : ""); cls = "me"; }
-      else if (g.mine) { who = "나 (유휴)"; cls = "me"; }
-      else if (!users.length) { who = "여유"; cls = "free"; }
-      else { who = users.join(", "); cls = ""; }
-      return `
-        <div class="lane ${g.mine ? "mine" : ""}">
-          <div class="lane-h"><span class="gi">GPU ${g.idx}</span>
-            <span class="who ${cls}" title="${esc(who)}">${esc(who)}</span></div>
-          <div class="minibar"><i class="${utilCls(util)}" style="width:${util}%"></i></div>
-          <div class="lane-f"><span>util ${util}%</span><span>${(g.mem_used / 1024).toFixed(0)}/${(g.mem_total / 1024).toFixed(0)}G</span></div>
-        </div>`;
-    }).join("");
-    const free = nd.gpus.filter(g => !(g.procs || []).length).length;
-    const otherTxt = nd.others && nd.others.length
-      ? `함께 쓰는 사람: ${nd.others.map(esc).join(", ")}` : "이 노드는 지금 나 혼자 씁니다";
+// Whole-node lanes. With whole=true (PrivateData=none clusters) every GPU node is
+// probed and each GPU carries the Slurm job holding it.
+function nodeCard(nd, whole, mySums) {
+  const lanes = nd.gpus.map(g => {
+    const util = g.util ?? 0;
+    const users = [...new Set((g.procs || []).map(p => p.user))];
+    const sl = g.slurm;
+    let who, cls;
+    if (g.mine && users.length) { who = "나" + (users.length > 1 ? ` +${users.length - 1}` : ""); cls = "me"; }
+    else if (g.mine) { who = "나 (유휴)"; cls = "me"; }
+    else if (sl) { who = sl.user + (users.length ? "" : " (유휴)"); cls = ""; }
+    else if (!users.length) { who = "여유"; cls = "free"; }
+    else { who = users.join(", ") + (whole ? " (Slurm 밖)" : ""); cls = ""; }
+    const sm = g.mine && mySums[`${nd.node}:${g.idx}`];
+    const jobLine = sl ? `<div class="job" title="${esc(`${sl.jobid} ${sl.name} · ${sl.elapsed}${sm ? "\n" + sm : ""}`)}">${esc(sm || `${sl.jobid} · ${sl.name}`)}</div>`
+      : whole ? `<div class="job">&nbsp;</div>` : "";
     return `
-      <div class="node">
-        <div class="node-top"><span class="nm">${esc(nd.node)}</span>
-          <span class="chip">GPU ${nd.gpus.length}장</span>
-          <span class="chip">여유 ${free}</span>
-          <span class="where" style="margin-left:auto">${otherTxt}</span></div>
-        <div class="lanes">${lanes}</div>
+      <div class="lane ${g.mine ? "mine" : ""} ${sl ? "held" : ""}">
+        <div class="lane-h"><span class="gi">GPU ${g.idx}</span>
+          <span class="who ${cls}" title="${esc(who)}">${esc(who)}</span></div>
+        ${jobLine}
+        <div class="minibar"><i class="${utilCls(util)}" style="width:${util}%"></i></div>
+        <div class="lane-f"><span>util ${util}%</span><span>${(g.mem_used / 1024).toFixed(0)}/${(g.mem_total / 1024).toFixed(0)}G</span></div>
       </div>`;
   }).join("");
-  return `<div class="section">같은 노드를 함께 쓰는 사람들 <span class="note">— 내 잡이 있는 노드는 노드 전체(다른 사용자 포함)가 보입니다</span></div>${cards}`;
+  const free = whole ? nd.gpus.filter(g => !g.slurm && !(g.procs || []).length).length
+                     : nd.gpus.filter(g => !(g.procs || []).length).length;
+  const otherTxt = nd.others && nd.others.length
+    ? `${whole ? "사용자" : "함께 쓰는 사람"}: ${nd.others.map(esc).join(", ")}`
+    : (nd.my_idx || []).length ? "이 노드는 지금 나 혼자 씁니다" : "";
+  return `
+    <div class="node" data-k="node|${esc(nd.node)}">
+      <div class="node-top"><span class="nm">${esc(nd.node)}</span>
+        <span class="chip">${esc(shortGpu(nd.gpus[0] && nd.gpus[0].name || ""))}</span>
+        <span class="chip">GPU ${nd.gpus.length}장</span>
+        <span class="chip">${whole ? "미할당" : "여유"} ${free}</span>
+        ${sysChips(nd.sys)}
+        <span class="where" style="margin-left:auto">${otherTxt}</span></div>
+      <div class="lanes">${lanes}</div>
+    </div>`;
+}
+
+function nodesView(nodes, whole, mySums) {
+  if (!nodes || !nodes.length) return "";
+  const head = whole
+    ? `<div class="sub-h">노드별 GPU 할당·사용 현황 <span class="note">— Slurm 할당(누가/어떤 잡) + nvidia-smi 실사용률, 파란 테두리 = 내 GPU</span></div>`
+    : `<div class="sub-h">같은 노드를 함께 쓰는 사람들 <span class="note">— 내 잡이 있는 노드는 노드 전체(다른 사용자 포함)가 보입니다</span></div>`;
+  return head + byTier(nodes, nd => nd.gpus[0] && nd.gpus[0].mem_total ? vramOfMiB(nd.gpus[0].mem_total) : null)
+    .map(([gb, nds]) => tierHead(gb, nds.map(nd => shortGpu(nd.gpus[0] && nd.gpus[0].name || ""))) +
+      nds.map(nd => nodeCard(nd, whole, mySums)).join("")).join("");
 }
 
 // Cluster-wide occupancy. Slurm only tells us counts here (PrivateData=jobs hides
 // who; no ssh without a job means no real util) -- so this is allocation, not use.
-function clusterView(cluster, myByNode) {
+function occupancyView(cluster, myByNode) {
   if (!cluster || !cluster.length) return "";
-  const cards = cluster.map(c => {
-    const mine = myByNode[c.node] || 0;
-    const dots = Array.from({ length: c.gpu_total }, (_, i) =>
-      i < mine ? `<span class="d mine" title="내 GPU"></span>`
-        : i < c.gpu_alloc ? `<span class="d used"></span>`
-          : `<span class="d"></span>`).join("");
-    const cls = c.gpu_free > 0 ? "free" : c.gpu_alloc >= c.gpu_total ? "full" : "";
-    return `
-      <div class="n ${cls}">
-        <div class="nn"><span>${esc(c.node)}</span><span>${esc(c.model || "")}</span></div>
-        <div class="dots">${dots}</div>
-        <div class="cnt">${c.gpu_free > 0 ? `<b>여유 ${c.gpu_free}</b> / ` : ""}${c.gpu_alloc}/${c.gpu_total} 사용</div>
-      </div>`;
-  }).join("");
   const totFree = cluster.reduce((a, c) => a + c.gpu_free, 0);
-  return `<div class="section">클러스터 GPU 점유 현황 <span class="note">— Slurm 할당 기준(누가/실사용률은 정책상 안 보임) · 여유 GPU 총 ${totFree}장</span></div><div class="occ">${cards}</div>`;
+  let html = `<div class="sub-h">클러스터 GPU 점유 현황 <span class="note">— Slurm 할당 기준(누가/실사용률은 정책상 안 보임) · 여유 GPU 총 ${totFree}장</span></div>`;
+  for (const [gb, nodes] of byTier(cluster, c => vramOfModel(c.model))) {
+    const fr = nodes.reduce((a, c) => a + c.gpu_free, 0);
+    html += tierHead(gb, nodes.map(c => c.model || "?"), `<span class="models">· 여유 ${fr}장</span>`);
+    html += `<div class="occ">` + nodes.map(c => {
+      const mine = myByNode[c.node] || 0;
+      const dots = Array.from({ length: c.gpu_total }, (_, i) =>
+        i < mine ? `<span class="d mine" title="내 GPU"></span>`
+          : i < c.gpu_alloc ? `<span class="d used"></span>` : `<span class="d"></span>`).join("");
+      const cls = c.gpu_free > 0 ? "free" : c.gpu_alloc >= c.gpu_total ? "full" : "";
+      return `
+        <div class="n ${cls}">
+          <div class="nn"><span>${esc(c.node)}</span><span>${esc(c.model || "")}</span></div>
+          <div class="dots">${dots}</div>
+          <div class="cnt">${c.gpu_free > 0 ? `<b>여유 ${c.gpu_free}</b> / ` : ""}${c.gpu_alloc}/${c.gpu_total} 사용</div>
+        </div>`;
+    }).join("") + `</div>`;
+  }
+  return html;
 }
 
 // Standalone GPU machines (config "nodes") probed by direct ssh, no Slurm.
@@ -306,58 +562,26 @@ function directNodesView(nodes) {
   const cards = nodes.map(nd => {
     if (nd.error) return `<div class="node"><div class="node-top"><span class="nm">${esc(nd.node)}</span>
       <span class="err">접속 불가: ${esc(nd.error)}</span></div></div>`;
-    const lanes = nd.gpus.map(g => {
-      const util = g.util ?? 0;
-      const users = [...new Set((g.procs || []).map(p => p.user).filter(u => u !== "?"))];
-      let who, cls;
-      if (!users.length) { who = "여유"; cls = "free"; }
-      else { who = users.join(", "); cls = ""; }
-      return `
-        <div class="lane">
-          <div class="lane-h"><span class="gi">GPU ${g.idx ?? g.smi_idx}</span>
-            <span class="who ${cls}" title="${esc(who)}">${esc(who)}</span></div>
-          <div class="minibar"><i class="${utilCls(util)}" style="width:${util}%"></i></div>
-          <div class="lane-f"><span>util ${util}%</span><span>${(g.mem_used / 1024).toFixed(0)}/${(g.mem_total / 1024).toFixed(0)}G</span></div>
-        </div>`;
-    }).join("");
-    const free = nd.gpus.filter(g => !(g.procs || []).length).length;
-    return `
-      <div class="node">
-        <div class="node-top"><span class="nm">${esc(nd.node)}</span>
-          <span class="chip">${esc(shortGpu(nd.gpus[0] && nd.gpus[0].name || ""))}</span>
-          <span class="chip">GPU ${nd.gpus.length}장</span>
-          <span class="chip">여유 ${free}</span></div>
-        <div class="lanes">${lanes}</div>
-      </div>`;
+    return nodeCard({ node: nd.node, gpus: nd.gpus, sys: nd.sys, others: [] }, false, {});
   }).join("");
-  return `<div class="section">직접 접속 노드 <span class="note">— Slurm 없이 ssh로 직접 보는 GPU (설정 nodes)</span></div>${cards}`;
+  return `<div class="panel"><div class="panel-h"><h2>직접 접속 노드</h2><span class="where">Slurm 없이 ssh로 직접 보는 GPU (설정 nodes)</span></div>${cards}</div>`;
 }
 
-function render(s) {
-  const snap = s.snapshot;
-  if (s.error) $("#stamp").innerHTML = `<span class="err">폴링 실패: ${esc(s.error)}</span>`;
-  if (!snap) { $("#body").innerHTML = `<div class="section">아직 스냅샷이 없습니다.</div>`; return; }
+function accentOf(name) {
+  const n = name.toLowerCase();
+  return n.includes("rllab") ? "var(--c-rllab)" : n.includes("yonsei") || n === "ai" ? "var(--c-yonsei)" : "var(--c-other)";
+}
 
-  const running = snap.jobs.filter(j => j.state === "RUNNING");
-  const pending = snap.jobs.filter(j => j.state !== "RUNNING");
-  const gpus = running.flatMap(j => (j.gpus || []).filter(g => !g.error).map(g => ({ job: j, g })));
-
+function tilesHtml(running, pending, gpus) {
   const idle = gpus.filter(({ g }) => !(g.procs || []).length);
   const active = gpus.length - idle.length;
   const avg = gpus.length ? Math.round(gpus.reduce((a, { g }) => a + (g.util || 0), 0) / gpus.length) : 0;
-  // Wasted GPU-hours: how long each empty GPU has been held with nothing on it.
-  // idle_for is null until the monitor has actually seen that GPU busy at least
-  // once, so those GPUs are counted as unknown rather than as zero.
+  // Wasted GPU-hours: idle_for is null until the GPU was seen busy once, so
+  // those count as unknown rather than zero.
   const measured = idle.filter(({ g }) => g.idle_for != null);
   const wasted = measured.reduce((a, { g }) => a + g.idle_for, 0) / 3600;
   const unknown = idle.length - measured.length;
-
-  if (!s.error) {
-    const age = Math.round((Date.now() / 1000) - s.polled_at);
-    $("#stamp").textContent = `${age}초 전 갱신 · ${s.poll_ms}ms · 자동 ${s.interval || 15}초`;
-  }
-
-  $("#tiles").innerHTML = `
+  return `
     <div class="tile"><div class="label">할당된 GPU</div><div class="value">${gpus.length}</div>
       <div class="sub">${running.length}개 잡${pending.length ? ` · 대기 ${pending.length}` : ""}</div></div>
     <div class="tile"><div class="label">가동 중</div><div class="value" style="color:var(--good)">${active}</div>
@@ -369,38 +593,189 @@ function render(s) {
     <div class="tile"><div class="label">놀린 시간</div>
       <div class="value">${measured.length ? wasted.toFixed(1) : "—"}<span style="font-size:15px;color:var(--ink-2)">${measured.length ? " GPU·h" : ""}</span></div>
       <div class="sub">${unknown ? `${unknown}개는 측정 이력 없음` : "모니터 시작 이후 누적"}</div></div>`;
+}
 
-  let html = "";
-  const order = [...gpus].sort((a, b) => (a.g.procs?.length ? 1 : 0) - (b.g.procs?.length ? 1 : 0) || (a.g.util || 0) - (b.g.util || 0));
-  html += `<div class="grid">${order.map(({ job, g }) => gpuCard(job, g)).join("")}</div>`;
+// polled_at advances even when the poll fails, so data age must come from the
+// snapshot's own ts — otherwise a days-old snapshot looks "N초 전 갱신".
+const snapAge = (c) => (c.snapshot && c.snapshot.ts ? Date.now() / 1000 - c.snapshot.ts : null);
+const isStale = (c) => snapAge(c) != null && snapAge(c) > 3 * (window.__gpumonInterval || 15) + 60;
+const staleBadge = (c) => isStale(c) ? `<span class="err"><b>⚠ ${hms(snapAge(c))} 전 데이터 (갱신 안 됨)</b></span>` : "";
 
-  const broken = running.flatMap(j => (j.gpus || []).filter(g => g.error).map(g => gpuCard(j, g)));
-  if (broken.length) html += `<div class="section">수집 실패</div><div class="grid">${broken.join("")}</div>`;
+function clusterPanel(c) {
+  const snap = c.snapshot;
+  const accent = accentOf(c.name);
+  const head = (extra) => `<div class="panel-h"><h2>${esc(c.name)}</h2><span class="where">ssh ${esc(c.host)}${extra}</span>
+    ${c.error ? `<span class="err">폴링 실패: ${esc(c.error)}</span>` : ""}${staleBadge(c)}</div>`;
+  if (!snap) return `<div class="panel" data-k="panel|${esc(c.name)}" style="--accent:${accent}">${head("")}<div class="where">아직 스냅샷이 없습니다.</div></div>`;
 
-  if (pending.length) {
-    html += `<div class="section">대기 중</div><div class="grid">` + pending.map(j => `
-      <div class="card"><div class="card-top">
-        <span class="jobid">${esc(j.jobid)}</span><span class="chip">${esc(j.partition)}</span>
-        <span class="chip">${esc(j.tres)}</span><span class="pill low">${"○"} ${esc(j.state)}</span>
-      </div><div class="err" style="color:var(--ink-2)">${esc(j.reason)}</div></div>`).join("") + `</div>`;
+  const running = snap.jobs.filter(j => j.state === "RUNNING");
+  const pending = snap.jobs.filter(j => j.state !== "RUNNING");
+  const gpus = running.flatMap(j => (j.gpus || []).filter(g => !g.error).map(g => ({ job: j, g })));
+  learnVram(gpus.map(x => x.g));
+  (snap.shared_nodes || []).forEach(nd => learnVram(nd.gpus));
+
+  const tot = (snap.cluster || []).reduce((a, n) => a + n.gpu_total, 0);
+  const fr = (snap.cluster || []).reduce((a, n) => a + n.gpu_free, 0);
+  const ne = Object.entries(snap.node_errors || {}).map(([n, e]) => `${n}: ${e}`).join(", ");
+  let html = head(` · ${c.poll_ms}ms · GPU ${tot}장 중 미할당 ${fr}장`) +
+    (ne ? `<div class="err" style="margin:-8px 0 10px">노드 수집 실패 — ${esc(ne)}</div>` : "") +
+    `<div class="tiles">${tilesHtml(running, pending, gpus)}</div>`;
+
+  // My GPUs, grouped by VRAM; stable order (node, idx) so cards don't jump around.
+  const order = (a, b) => a.g.node.localeCompare(b.g.node, undefined, { numeric: true }) || (a.g.idx - b.g.idx);
+  for (const [gb, list] of byTier(gpus, x => x.g.mem_total ? vramOfMiB(x.g.mem_total) : null)) {
+    list.sort(order);
+    html += tierHead(gb, list.map(x => shortGpu(x.g.name)), `<span class="models">· ${list.length}장</span>`);
+    html += `<div class="grid">${list.map(({ job, g }) => gpuCard(c.name, job, g)).join("")}</div>`;
   }
-  const myByNode = {};
-  (snap.shared_nodes || []).forEach(nd => { myByNode[nd.node] = (nd.my_idx || []).length; });
-  html += sharedNodeView(snap.shared_nodes);
-  html += clusterView(snap.cluster, myByNode);
-  html += directNodesView(s.direct);
+  const broken = running.flatMap(j => (j.gpus || []).filter(g => g.error).map(g => gpuCard(c.name, j, g)));
+  if (broken.length) html += `<div class="sub-h">수집 실패</div><div class="grid">${broken.join("")}</div>`;
+  if (pending.length) {
+    const nowS = Date.now() / 1000;
+    const waitOf = (j) => j.submit && j.submit !== "N/A" && !isNaN(Date.parse(j.submit)) ? nowS - Date.parse(j.submit) / 1000 : null;
+    const fmtWait = (s) => s == null ? "" : s >= 86400 ? `${Math.floor(s / 86400)}일 ${Math.floor(s % 86400 / 3600)}시간` : s >= 3600 ? `${Math.floor(s / 3600)}시간 ${Math.floor(s % 3600 / 60)}분` : `${Math.max(0, Math.floor(s / 60))}분`;
+    const expStart = (j) => j.start && j.start !== "N/A" && !isNaN(Date.parse(j.start))
+      ? new Date(j.start).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    pending.sort((a, b) => (waitOf(b) ?? -1) - (waitOf(a) ?? -1));  // longest-waiting first
+    html += `<div class="sub-h">대기 중 <span class="note">— ${pending.length}개 · 오래 기다린 순</span></div><div class="grid">` + pending.map(j => `
+      <div class="card" data-k="pend|${esc(c.name)}|${esc(j.jobid)}"><div class="card-top">
+        <span class="jobid" title="${esc(j.name)}">${esc(j.jobid)}</span><span class="chip" title="${esc(j.partition)}">${esc(j.partition)}</span>
+        <span class="chip">${esc(j.tres)}</span>${j.qos ? `<span class="chip">${esc(j.qos)}</span>` : ""}${j.time_limit ? `<span class="chip">한도 ${esc(j.time_limit)}</span>` : ""}<span class="pill low">○ ${esc(j.state)}</span>
+      </div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="err" style="color:var(--ink-2)">${esc(j.reason)}</span>
+        ${waitOf(j) != null ? `<span class="where" title="제출 ${esc(j.submit)}">⏱ <b style="color:var(--ink)">${fmtWait(waitOf(j))}</b> 대기</span>` : ""}
+        ${j.priority ? `<span class="where" title="sprio 우선순위 점수">점수 ${esc(j.priority)}</span>` : ""}
+        ${expStart(j) ? `<span class="where" title="Slurm 예상 시작">예상 ${expStart(j)}</span>` : ""}
+        <span style="margin-left:auto">${relBtn(c.name, j, "대기 취소")}</span></div></div>`).join("") + `</div>`;
+  }
 
-  $("#body").innerHTML = html;
+  const whole = !!snap.whole_cluster;
+  const myByNode = {}, mySums = {};
+  (snap.shared_nodes || []).forEach(nd => { myByNode[nd.node] = (nd.my_idx || []).length; });
+  snap.jobs.forEach(j => (j.gpus || []).forEach(g => {
+    const sm = g.sum_fp && window.__summaries[g.sum_fp];
+    if (sm && sm.summary) mySums[`${g.node}:${g.idx}`] = sm.summary;
+  }));
+  if (whole) html += fairshareView(snap.fairshare, snap.user) + queueView(snap.queue, snap.user);
+  html += nodesView(snap.shared_nodes, whole, mySums);
+  if (!whole) html += occupancyView(snap.cluster, myByNode);
+  return `<div class="panel" data-k="panel|${esc(c.name)}" style="--accent:${accent}">${html}</div>`;
+}
+
+// #tab=<cluster> deep link wins over the remembered tab
+let currentTab = (() => { const h = decodeURIComponent(location.hash).match(/tab=([^&]+)/);
+  if (h) return h[1];
+  try { return localStorage.getItem("gpumon.tab") || "all"; } catch { return "all"; } })();
+function setTab(t) {
+  currentTab = t;
+  try { localStorage.setItem("gpumon.tab", t); } catch {}
+  if (window.__last) render(window.__last, true);
+}
+
+// Task chips: running ones always; finished ones for 30 min (until dismissed).
+const dismissed = new Set();
+function renderTasks(tasks) {
+  const now = Date.now() / 1000;
+  const chips = (tasks || []).filter(t => !dismissed.has(t.id) && (t.status === "running" || now - t.ended < 1800))
+    .slice().reverse().map(t => {
+      const icon = t.status === "running" ? `<span class="spin"></span>` : t.status === "done" ? "✓" : "✕";
+      const label = t.kind === "release" ? `${t.cluster} ${t.jobid}` : `${t.cluster} ${t.jobid ? t.jobid + " " : ""}GPU 신청`;
+      return `<span class="task ${t.status}" data-k="task|${t.id}" onclick="showTask(${t.id})">${icon} ${esc(label)} · ${esc(t.phase)}${
+        t.status !== "running" ? `<span class="x" onclick="event.stopPropagation(); dismissed.add(${t.id}); renderTasks(window.__tasks)">×</span>` : ""}</span>`;
+    }).join("");
+  morphInto($("#taskbar"), chips);
+  if (rel.viewTask) {
+    const t = (tasks || []).find(x => x.id === rel.viewTask);
+    if (t) $("#modal").innerHTML = taskHtml(t);
+  }
+}
+function taskHtml(t) {
+  return `<h3>${esc(t.cluster)} · ${esc(t.title)}</h3>
+    <div class="where">${t.status === "running" ? `<span class="spin"></span> ${esc(t.phase)}…` : esc(t.phase)} · 시작 ${new Date(t.started * 1000).toLocaleTimeString()}</div>
+    <pre>${esc(t.log.join("\n") || "…")}</pre>
+    <div class="btns"><button onclick="closeRelease()">닫기</button></div>`;
+}
+function showTask(id) {
+  const t = (window.__tasks || []).find(x => x.id === id);
+  if (!t) return;
+  Object.assign(rel, { open: true, busy: false, viewTask: id });
+  $("#modal").innerHTML = taskHtml(t);
+  $("#modal-bg").classList.add("open");
+}
+
+function render(s, force) {
+  window.__last = s;
+  window.__tasks = s.tasks || [];
+  renderTasks(s.tasks);
+  // Primary cluster lives at the top level of the state; extra Slurm clusters
+  // (config "clusters") each come as their own slot.
+  const clusters = [{ name: s.name || s.host, host: s.host, snapshot: s.snapshot, error: s.error,
+                      polled_at: s.polled_at, poll_ms: s.poll_ms }, ...(s.clusters || [])];
+  window.__summaries = s.summaries || {};
+  const live = clusters.filter(c => c.snapshot);
+
+  const errs = clusters.filter(c => c.error).map(c => `${c.name} 폴링 실패`);
+  if (s.summary_error) errs.push(s.summary_error);
+  const fresh = live.filter(c => !isStale(c));
+  const age = fresh.length ? Math.round(Date.now() / 1000 - Math.min(...fresh.map(c => c.snapshot.ts))) : null;
+  live.filter(isStale).forEach(c => errs.push(`${c.name} ${hms(snapAge(c))} 전 데이터`));
+  $("#stamp").innerHTML = (age != null ? `${age}초 전 갱신 · 자동 ${s.interval || 15}초` : "") +
+    errs.map(e => ` · <span class="err">${esc(e)}</span>`).join("");
+
+  if (!clusters.some(c => c.name === currentTab)) currentTab = "all";
+  const myCount = (c) => (c.snapshot ? c.snapshot.jobs.filter(j => j.state === "RUNNING").reduce((a, j) => a + (j.gpus || []).length, 0) : 0);
+  const tabs = clusters.length > 1 ? [["all", "전체", "var(--ink)", clusters.reduce((a, c) => a + myCount(c), 0)],
+    ...clusters.map(c => [c.name, c.name, accentOf(c.name), myCount(c)])]
+    .map(([k, label, acc, n]) => `<button class="${currentTab === k ? "on" : ""}" style="--accent:${acc}" onclick="setTab('${esc(k)}')">${esc(label)}<span class="n">GPU ${n}</span></button>`).join("") : "";
+  morphInto($("#tabs"), tabs);
+  $("#tiles").style.display = "none";  // tiles now live inside each cluster panel
+
+  const shown = currentTab === "all" ? clusters : clusters.filter(c => c.name === currentTab);
+  let html = shown.map(clusterPanel).join("");
+  if (currentTab === "all") html += directNodesView(s.direct);
+  morphInto($("#body"), html);
   window.__gpumonInterval = s.interval || 15;
   wireSparks();
 }
 
+// ---- in-place DOM update ----------------------------------------------------
+// Replacing innerHTML every few seconds collapses whatever the user expanded,
+// kills text selections and makes the page jump. Instead diff the new markup
+// against the live DOM and touch only what changed; elements with a data-k key
+// are only morphed into an element with the same key.
+function morphInto(el, html) {
+  const t = document.createElement(el.tagName);
+  t.innerHTML = html;
+  morphChildren(el, t);
+}
+function sameKind(a, b) {
+  if (a.nodeType !== b.nodeType) return false;
+  if (a.nodeType !== 1) return true;
+  return a.tagName === b.tagName && a.getAttribute("data-k") === b.getAttribute("data-k");
+}
+function morphChildren(from, to) {
+  const a = [...from.childNodes], b = [...to.childNodes];
+  for (let i = 0; i < b.length; i++) {
+    if (i >= a.length) { from.appendChild(b[i]); continue; }
+    if (!sameKind(a[i], b[i])) { from.replaceChild(b[i], a[i]); continue; }
+    if (a[i].nodeType === 1) morphEl(a[i], b[i]);
+    else if (a[i].nodeValue !== b[i].nodeValue) a[i].nodeValue = b[i].nodeValue;
+  }
+  for (let i = b.length; i < a.length; i++) from.removeChild(a[i]);
+}
+function morphEl(a, b) {
+  for (const { name } of [...a.attributes]) if (!b.hasAttribute(name)) a.removeAttribute(name);
+  for (const { name, value } of [...b.attributes]) if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+  morphChildren(a, b);
+}
+
 function wireSparks() {
   document.querySelectorAll(".spark[data-pts]").forEach(el => {
-    const pts = el.dataset.pts.split(",").map(p => p.split(":").map(Number));
+    if (el.__wired) return;  // elements now persist across renders
+    el.__wired = true;
     const svg = el.querySelector("svg"), cross = el.querySelector(".cross"), tip = el.querySelector(".tip");
-    const n = pts.length;
     el.addEventListener("pointermove", (e) => {
+      const pts = el.dataset.pts.split(",").map(p => p.split(":").map(Number));
+      const n = pts.length;
       const r = svg.getBoundingClientRect();
       const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
       const i = Math.round(frac * (n - 1));
@@ -417,10 +792,320 @@ function wireSparks() {
   });
 }
 
+// ---- stop / release ---------------------------------------------------------
+// Two steps: the server first computes a plan on the node (which containers to
+// docker-stop, which of my processes to kill, what it will NOT touch); only after
+// the user confirms that exact plan (token) does it act. If the processes on the
+// GPU changed in between, the server refuses and returns the fresh plan.
+const rel = { open: false };
+async function relPost(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-GPUMon": "1" },
+                                body: JSON.stringify(body) });
+  return r.json();
+}
+function closeRelease() { rel.open = false; rel.viewTask = null; $("#modal-bg").classList.remove("open"); }
+$("#modal-bg").addEventListener("click", (e) => { if (e.target.id === "modal-bg" && !rel.busy) closeRelease(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && rel.open && !rel.busy) closeRelease(); });
+
+async function openRelease(cluster, jobid) {
+  Object.assign(rel, { open: true, busy: true, cluster, jobid, plan: null, viewTask: null });
+  $("#modal-bg").classList.add("open");
+  $("#modal").innerHTML = `<h3>${esc(cluster)} · 잡 ${esc(jobid)}</h3><div class="where">노드에서 GPU 위 프로세스·컨테이너를 확인하는 중… (node200은 ~15초)</div>`;
+  const out = await relPost("/api/release/plan", { cluster, jobid }).catch(e => ({ error: String(e) }));
+  rel.busy = false;
+  showPlan(out);
+}
+
+function planItems(plan) {
+  let stop = [], kill = [], skip = [];
+  for (const n of plan.nodes || []) {
+    stop = stop.concat(n.stop.map(c => `<div class="it">🐳 <b>docker stop</b> ${esc(c.name || c.id)} <span class="where">· ${esc(n.node)} GPU ${esc(c.gpus.join(","))} · ${esc(c.image)} · ${esc(c.id)}</span></div>`));
+    kill = kill.concat(n.kill.map(p => `<div class="it"><b>kill</b> pid ${p.pid} <span class="where">· ${esc(n.node)} GPU ${esc(p.gpu)} · ${esc(p.user)} (자식 프로세스 포함, TERM→15초→KILL)</span><code>${esc(p.cmd)}</code></div>`));
+    skip = skip.concat(n.skip.map(x => `<div class="it">${esc(x.name || ("pid " + x.pid))} <span class="where">· ${esc(n.node)} · ${esc(x.why)}</span>${x.cmd ? `<code>${esc(x.cmd)}</code>` : ""}</div>`));
+  }
+  return { stop, kill, skip };
+}
+
+function showPlan(out, note) {
+  if (out.error) {
+    $("#modal").innerHTML = `<h3>${esc(rel.cluster)} · 잡 ${esc(rel.jobid)}</h3><div class="err">${esc(out.error)}</div>
+      <div class="btns"><button onclick="closeRelease()">닫기</button></div>`;
+    return;
+  }
+  rel.plan = out;
+  const { stop, kill, skip } = planItems(out);
+  const nothing = !stop.length && !kill.length;
+  $("#modal").innerHTML = `
+    <h3>${esc(rel.cluster)} · 잡 ${esc(rel.jobid)} 정지/반납</h3>
+    <div class="where">${esc(out.job_name || "")}</div>
+    ${note ? `<div class="err" style="margin-top:8px">${esc(note)}</div>` : ""}
+    ${nothing ? `<div class="act">GPU 위에서 돌고 있는 프로세스가 없습니다 — 반납(scancel)만 하면 됩니다.</div>` : ""}
+    ${stop.length ? `<div class="act stop">컨테이너 정지 (${stop.length})</div>${stop.join("")}` : ""}
+    ${kill.length ? `<div class="act stop">프로세스 종료 (${kill.length})</div>${kill.join("")}` : ""}
+    ${skip.length ? `<div class="act skip">건드리지 않음 (${skip.length})</div>${skip.join("")}` : ""}
+    <div class="btns">
+      <button onclick="closeRelease()">취소</button>
+      ${nothing ? "" : `<button class="warnb" onclick="doRelease(false)">프로세스만 정지 (GPU 할당 유지)</button>`}
+      <button class="danger" onclick="doRelease(true)">${nothing ? "반납 (scancel)" : "정지 + 반납 (scancel)"}</button>
+    </div>`;
+}
+
+// Queued: the server runs it in the background; progress shows as a chip on top.
+async function doRelease(scancel) {
+  const out = await relPost("/api/release/exec", { cluster: rel.cluster, jobid: rel.jobid, token: rel.plan.token, scancel })
+    .catch(e => ({ error: String(e) }));
+  if (out.error) return showPlan({ error: out.error });
+  closeRelease();
+  tick();
+}
+
+// ---- GPU request (salloc --no-shell) ------------------------------------------
+const al = {};
+// One-click request presets: pick the VRAM tier holding `model`, plus a QOS
+const ALLOC_PRESETS = [
+  { label: "PRO6000", model: /PRO6000/i, qos: "pro6000_qos" },
+  { label: "A6000", model: /A6000/i, qos: "base_qos" },
+  { label: "4090 · 3090 · A5000", model: /4090/i, qos: "base_qos" },
+  { label: "big_qos (24GB)", model: /4090/i, qos: "big_qos" },
+];
+function applyPreset(i) {
+  const pr = ALLOC_PRESETS[i], P = allocPlan();
+  const t = P.tiers.find(([, ns]) => ns.some(n => pr.model.test(n.model)));
+  if (!t) return drawAlloc();
+  Object.assign(al, { tier: t[0], qos: pr.qos, off: new Set(), cpuAuto: true, preset: i });
+  try { localStorage.setItem("gpumon.allocPreset", String(i)); } catch {}
+  drawAlloc();
+}
+function clustersNow() {
+  const s = window.__last || {};
+  return [{ name: s.name || s.host, snapshot: s.snapshot }, ...(s.clusters || [])].filter(c => c.snapshot);
+}
+function parseMax(t) {  // "14-00:00:00" -> hours; UNLIMITED -> Infinity
+  if (!t || t === "UNLIMITED") return Infinity;
+  const m = t.match(/^(?:(\d+)-)?(\d+)(?::(\d+))?/);
+  return m ? (+(m[1] || 0)) * 24 + (+m[2]) : Infinity;
+}
+function openAlloc() {
+  const cls = clustersNow();
+  if (!cls.length) return;
+  const pref = currentTab !== "all" && cls.find(c => c.name === currentTab) ? currentTab : cls[0].name;
+  Object.assign(al, { cluster: pref, tier: null, qos: "", off: new Set(), gpus: 1, cpus: 8, cpuAuto: true, preset: null,
+                      mem: "", time: "3-00:00:00", name: "bash", check: null, checkKey: "" });
+  Object.assign(rel, { open: true, busy: false, viewTask: null });
+  $("#modal-bg").classList.add("open");
+  let last = null; try { last = localStorage.getItem("gpumon.allocPreset"); } catch {}
+  if (last != null && ALLOC_PRESETS[+last]) applyPreset(+last); else drawAlloc();
+}
+
+// The request is by VRAM tier, not partition: pick a tier (and optionally drop
+// nodes), and the request becomes "-p <every partition holding those nodes that
+// accepts the QOS> -x <nodes in them we don't want>" with an untyped --gres, so
+// Slurm starts it on whichever matching node frees up first.
+function allocPlan() {
+  const cls = clustersNow();
+  const c = cls.find(x => x.name === al.cluster) || cls[0];
+  al.cluster = c.name;
+  const snap = c.snapshot, lim = snap.limits || {};
+  const parts = snap.partitions || [];
+  const pmap = Object.fromEntries(parts.filter(p => p.state === "UP").map(p => [p.name, p]));
+  const nodes = (snap.cluster || []).filter(n => !/DOWN|DRAIN|FAIL|NOT_RESPONDING/.test(n.state));
+  const tierOf = (n) => vramOfModel(n.model);
+  const tiers = byTier(nodes, tierOf);
+  // QOS permission is per account, so probe every QOS of the cluster once
+  const allowed = qosOk[c.name] || {};
+  const clusterQos = [...new Set(parts.flatMap(p => p.allow_qos || []))];
+  const unknown = clusterQos.filter(q => !(q in allowed));
+  if (unknown.length && !qosProbing.has(c.name))
+    probeQos(c.name, unknown.map(q => [q, parts.find(p => (p.allow_qos || []).includes(q)).name]));
+  const usable = (q) => allowed[q] !== false;
+  // a tier is usable if one of its partitions takes a QOS I may use (or has no QOS list)
+  const tierOk = (ns) => ns.some(n => (n.partitions || []).some(p => pmap[p] &&
+    (!(pmap[p].allow_qos || []).length || pmap[p].allow_qos.some(usable))));
+  if (!tiers.some(([gb, ns]) => gb === al.tier && tierOk(ns)))
+    al.tier = (tiers.find(([, ns]) => tierOk(ns) && ns.some(n => n.gpu_free > 0)) || tiers.find(([, ns]) => tierOk(ns)) || tiers[0] || [null])[0];
+  const tierNodes = (tiers.find(([gb]) => gb === al.tier) || [null, []])[1];
+  const tierParts = [...new Set(tierNodes.flatMap(n => n.partitions || []))].filter(p => pmap[p]);
+
+  // QOS: any QOS some tier partition allows and my account may use
+  const qinfo = (q) => (lim.qos || {})[q] || {};
+  const room = (q) => qinfo(q).gpu_cap == null ? Infinity : qinfo(q).gpu_cap - qinfo(q).gpu_used;
+  const allQos = [...new Set(tierParts.flatMap(p => pmap[p].allow_qos || []))];
+  const qosList = allQos.slice().sort((a, b) => usable(b) - usable(a) || (qinfo(b).priority || 0) - (qinfo(a).priority || 0));
+  if (qosList.length && (!qosList.includes(al.qos) || !usable(al.qos)))
+    al.qos = qosList.find(q => usable(q) && room(q) >= al.gpus) || qosList.find(usable) || qosList[0];
+  if (!qosList.length) al.qos = "";
+
+  // partitions that accept that QOS (no AllowQos list = accepts anything)
+  const okPart = (p) => !al.qos || !(pmap[p].allow_qos || []).length || pmap[p].allow_qos.includes(al.qos);
+  const eligible = tierNodes.filter(n => (n.partitions || []).some(p => pmap[p] && okPart(p)))
+    .sort((a, b) => a.model.localeCompare(b.model) || a.node.localeCompare(b.node, undefined, { numeric: true }));
+  const chosen = eligible.filter(n => !al.off.has(n.node));
+  const useParts = [...new Set(chosen.flatMap(n => (n.partitions || []).filter(p => pmap[p] && okPart(p))))].sort();
+  const chosenSet = new Set(chosen.map(n => n.node));
+  // CPU fair share per GPU on the tightest chosen node (e.g. node55: 48 cores / 8 GPUs = 6);
+  // asking more than that can leave that node's GPUs unallocatable for everyone
+  const shares = chosen.filter(n => n.gpu_total > 0).map(n => Math.floor(n.cpu_total / n.gpu_total));
+  const perGpu = shares.length ? Math.max(1, Math.min(...shares)) : 8;
+  if (al.cpuAuto) al.cpus = al.gpus > 0 ? perGpu * al.gpus : 8;
+  // every other node those partitions contain must be excluded explicitly
+  const exclude = nodes.concat((snap.cluster || []).filter(n => !nodes.includes(n)))
+    .filter(n => !chosenSet.has(n.node) && (n.partitions || []).some(p => useParts.includes(p))).map(n => n.node).sort();
+  const maxH = Math.min(...useParts.map(p => parseMax(pmap[p].max_time)), lim.max_wall_min ? lim.max_wall_min / 60 : Infinity);
+  return { c, lim, tiers, tierOk, eligible, chosen, useParts, exclude, qosList, qinfo, room, usable, allowed, maxH, perGpu,
+           models: [...new Set(chosen.map(n => n.model))] };
+}
+
+function drawAlloc() {
+  const P = allocPlan();
+  const { c, lim, tiers, tierOk, eligible, chosen, useParts, exclude, qosList, qinfo, room, usable, allowed, maxH, perGpu } = P;
+  // presets whose model exists here and whose QOS this tier's partitions take
+  const prs = ALLOC_PRESETS.map((pr, i) => [pr, i]).filter(([pr]) => tiers.some(([, ns]) => tierOk(ns) && ns.some(n => pr.model.test(n.model))));
+  const cls = clustersNow();
+  const opt = (v, label, cur, dis) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""} ${dis ? "disabled" : ""}>${esc(label)}</option>`;
+  const fits = (n) => n.gpu_free >= al.gpus && (n.cpu_total - n.cpu_alloc) >= al.cpus;
+  const maxLabel = maxH === Infinity ? "무제한" : maxH % 24 ? `${maxH}시간` : `${maxH / 24}일`;
+  const qLabel = (q) => { const i = qinfo(q);
+    if (!usable(q)) return `${q} — 내 계정엔 권한 없음`;
+    return `${q}${q in allowed ? "" : " (권한 확인 중…)"} — 우선순위 ${i.priority ?? "?"}${i.gpu_cap != null ? ` · 1인 GPU ${i.gpu_cap}장 중 ${i.gpu_used}장 사용` : " · 1인 한도 없음"}${room(q) < al.gpus ? " (한도 꽉 참)" : ""}`; };
+  const argv = ["salloc --no-shell", `-J ${al.name}`, `-p ${useParts.join(",")}`, "-N 1 -n 1", al.cpuAuto ? "" : `-c ${al.cpus}`, `-t ${al.time}`,
+    al.gpus > 0 ? `--gres=gpu:${al.gpus}` : "", al.mem ? `--mem ${al.mem}` : "", exclude.length ? `-x ${exclude.join(",")}` : "",
+    al.qos ? `-q ${al.qos}` : ""].filter(Boolean).join(" ");
+  const presets = [["1시간", "1:00:00"], ["6시간", "6:00:00"], ["1일", "1-00:00:00"], ["3일", "3-00:00:00"], ["7일", "7-00:00:00"], ["14일", "14-00:00:00"]]
+    .filter(([, t]) => parseMax(t) <= maxH);
+  const nodeBoxes = eligible.map(n => `
+    <label class="nb" style="color:${fits(n) ? "var(--ink)" : "var(--muted)"}">
+      <input type="checkbox" ${al.off.has(n.node) ? "" : "checked"} onchange="this.checked ? al.off.delete('${esc(n.node)}') : al.off.add('${esc(n.node)}'); drawAlloc()">
+      <span><b>${esc(n.node)}</b> ${esc(n.model)} · 여유 GPU ${n.gpu_free}/${n.gpu_total} · CPU ${n.cpu_total - n.cpu_alloc}</span></label>`).join("");
+  const freeNow = chosen.filter(fits).length;
+
+  $("#modal").innerHTML = `
+    <h3>GPU 신청 <span class="where" style="font-weight:400;font-size:12px">— VRAM 등급으로 신청 (salloc --no-shell), 접속은 srun --jobid=N --overlap --pty bash -i</span></h3>
+    <div class="form">
+      ${prs.length ? `<label>프리셋</label><div class="presets">${prs.map(([pr, i]) =>
+        `<button class="${al.preset === i ? "on primary" : ""}" onclick="applyPreset(${i})">${esc(pr.label)}</button>`).join("")}</div>` : ""}
+      <label>클러스터</label>
+      <select onchange="al.cluster=this.value; al.tier=null; al.qos=''; al.off=new Set(); drawAlloc()">${cls.map(x => opt(x.name, x.name, al.cluster)).join("")}</select>
+      <label>VRAM</label>
+      <select onchange="al.tier=this.value==='null'?null:+this.value; al.qos=''; al.off=new Set(); al.preset=null; drawAlloc()">${tiers.map(([gb, ns]) =>
+        opt(gb, `${gb == null ? "VRAM ?" : gb + "GB"} — ${[...new Set(ns.map(n => n.model))].join(" · ")} — 여유 ${ns.reduce((a, n) => a + n.gpu_free, 0)} / ${ns.reduce((a, n) => a + n.gpu_total, 0)}${tierOk(ns) ? "" : " — 내 계정엔 권한 없음"}`, al.tier, !tierOk(ns))).join("")}</select>
+      <label>QOS</label>
+      ${qosList.length ? `<select onchange="al.qos=this.value; al.off=new Set(); al.preset=null; drawAlloc()">${qosList.map(q => opt(q, qLabel(q), al.qos, !usable(q))).join("")}</select>`
+        : `<span class="where">이 클러스터는 QOS 지정 없음</span>`}
+      ${al.qos && room(al.qos) < al.gpus ? `<div class="hint"><span class="err">${esc(al.qos)} 1인 한도(${qinfo(al.qos).gpu_cap}장)를 이미 ${qinfo(al.qos).gpu_used}장 쓰는 중 — 기존 할당을 반납할 때까지 대기합니다${qosList.some(q => q !== al.qos && usable(q) && room(q) >= al.gpus) ? ". 다른 QOS를 고르면 한도 여유가 있습니다(우선순위는 다를 수 있음)" : ""}</span></div>` : ""}
+      <label>노드 <span class="where">(${chosen.length}/${eligible.length})</span></label>
+      <div>
+        <div class="presets" style="margin-bottom:6px"><button onclick="al.off=new Set(); drawAlloc()">전체 선택</button>
+          <button onclick="al.off=new Set(allocPlan().eligible.map(n=>n.node)); drawAlloc()">전체 해제</button></div>
+        <div style="max-height:180px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;border:1px solid var(--border);border-radius:6px;padding:8px">${nodeBoxes || '<span class="where">해당 노드 없음</span>'}</div>
+      </div>
+      <div class="hint">선택한 노드 중 Slurm이 먼저 비는 곳에 넣습니다 · 지금 바로 들어갈 노드 ${freeNow}개 · 파티션 ${useParts.length}개: ${esc(useParts.join(", "))}</div>
+      <label>GPU 개수</label>
+      <div class="row2"><input type="number" min="0" max="8" value="${al.gpus}" onchange="al.gpus=Math.max(0,Math.min(8,+this.value||0)); drawAlloc()"></div>
+      <label>CPU 개수</label>
+      <div class="row2"><input type="number" min="1" max="256" placeholder="서버 기본값" value="${al.cpuAuto ? "" : al.cpus}" onchange="if (this.value.trim()==='') { al.cpuAuto=true } else { al.cpuAuto=false; al.cpus=Math.max(1,Math.min(256,+this.value||1)) } drawAlloc()">
+        ${al.cpuAuto ? "" : `<button onclick="al.cpuAuto=true; drawAlloc()">기본값</button>`}</div>
+      <div class="hint">${al.cpuAuto ? "-c 생략 → 파티션 기본값(DefCpuPerGPU)" : "직접 지정"} · 선택 노드의 공정 몫은 GPU당 ${perGpu}개${
+        !al.cpuAuto && al.gpus > 0 && al.cpus > perGpu * al.gpus ? ` · <span class="err">몫보다 많음 — 그 노드의 남은 GPU를 다른 사람이 못 쓰게 될 수 있습니다</span>` : ""}</div>
+      <label>메모리</label>
+      <input placeholder="비우면 파티션 기본값 (예: 64G)" value="${esc(al.mem)}" onchange="al.mem=this.value.trim().toUpperCase(); drawAlloc()">
+      <label>시간</label>
+      <div><div class="presets">${presets.map(([l, t]) => `<button class="${al.time === t ? "on primary" : ""}" onclick="al.time='${t}'; drawAlloc()">${l}</button>`).join("")}</div>
+        <input style="margin-top:6px" value="${esc(al.time)}" onchange="al.time=this.value.trim(); drawAlloc()"></div>
+      <div class="hint">형식 D-HH:MM:SS · 최대 ${maxLabel}${lim.max_wall_min ? ` (계정 한도 ${lim.max_wall_min / 1440}일)` : ""}${parseMax(al.time) > maxH ? ` · <span class="err">최대 시간 초과 — 거절되거나 영원히 대기합니다</span>` : ""}</div>
+      <label>잡 이름</label>
+      <input value="${esc(al.name)}" onchange="al.name=this.value.trim()||'bash'; drawAlloc()">
+    </div>
+    <pre style="margin-top:14px">${esc(argv)}</pre>
+    <div id="alloc-check" class="where" style="margin-top:-4px">${checkHtml()}</div>
+    <div class="btns"><button onclick="closeRelease()">취소</button>
+      <button class="primary" onclick="submitAlloc()" ${useParts.length ? "" : "disabled"}>신청</button></div>`;
+  if (useParts.length) scheduleCheck();
+}
+
+const qosOk = {}, qosProbing = new Set();
+async function probeQos(cluster, pairs) {
+  qosProbing.add(cluster);
+  const P = allocPlan();
+  const out = await relPost("/api/alloc/check", Object.assign(allocBody(P), { cluster, qos: "", exclude: "", probe_qos: pairs }))
+    .catch(() => ({}));
+  if (out.qos_ok) qosOk[cluster] = Object.assign(qosOk[cluster] || {}, out.qos_ok);
+  qosProbing.delete(cluster);
+  if (rel.open && !rel.viewTask && $("#alloc-check")) drawAlloc();
+}
+const allocBody = (P = allocPlan()) => ({ cluster: al.cluster, partition: P.useParts.join(","), gpu_type: "",
+  gpus: al.gpus, cpus: al.cpuAuto ? "" : al.cpus, mem: al.mem, time: al.time, node: "", name: al.name, qos: al.qos,
+  exclude: P.exclude.join(","), label: `${al.tier ?? "?"}GB` });
+function checkHtml() {
+  if (!al.check) return "예상 시작 확인 중… (sbatch --test-only)";
+  if (al.check.error) return `<span class="err">${esc(al.check.error)}</span>`;
+  const m = (al.check.msg || "").match(/to start at (\S+) using .* on nodes (\S+)/);
+  if (!m) return `<span class="err">${esc(al.check.msg || "확인 실패")}</span>`;
+  const t = new Date(m[1]), soon = t - Date.now() < 120000;
+  return `${soon ? "✓ <b style='color:var(--good)'>바로 시작 가능</b>" : `⏳ 예상 시작 <b>${esc(t.toLocaleString())}</b>`} · ${esc(m[2])}${al.check.qos ? ` · QOS ${esc(al.check.qos)}` : ""}`;
+}
+// Ask the cluster (sbatch --test-only) whenever the request changes, debounced.
+let checkTimer = null;
+function scheduleCheck() {
+  const key = JSON.stringify(allocBody());
+  if (key === al.checkKey) return;
+  al.checkKey = key; al.check = null;
+  const el0 = $("#alloc-check"); if (el0) el0.innerHTML = checkHtml();
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    const out = await relPost("/api/alloc/check", allocBody()).catch(e => ({ error: String(e) }));
+    if (al.checkKey !== key) return;
+    al.check = out;
+    const el = $("#alloc-check");
+    if (el) el.innerHTML = checkHtml();
+    const pre = $("#modal pre");
+    if (pre && out.qos && !al.qos && !pre.textContent.includes(" -q ")) pre.textContent += " -q " + out.qos;
+  }, 500);
+}
+async function submitAlloc() {
+  const out = await relPost("/api/alloc", allocBody())
+    .catch(e => ({ error: String(e) }));
+  if (out.error || !out.ok) {
+    return $("#modal .btns").insertAdjacentHTML("beforebegin", `<div class="err">${esc(out.error || "실패")}</div>`);
+  }
+  closeRelease();
+  tick();
+}
+$("#alloc-btn").onclick = openAlloc;
+// deep link: open the request form straight away (index.html#alloc)
+if (location.hash === "#alloc") { const once = setInterval(() => { if (window.__last) { clearInterval(once); openAlloc(); } }, 300); }
+
+// Inside the .app the native side posts the notifications; a plain browser tab
+// uses the Web Notification API with the server's recent event list instead.
+const IN_APP = navigator.userAgent.includes("GPUMonitorApp");
+let lastSeq = null;
+function syncNotify(s) {
+  const box = $("#notify");
+  if (document.activeElement !== box) box.checked = !!s.notify;
+  const seq = s.event_seq || 0;
+  if (lastSeq !== null && !IN_APP && s.notify && "Notification" in window &&
+      Notification.permission === "granted") {
+    for (const ev of s.events || []) if (ev.seq > lastSeq) new Notification(ev.title, { body: ev.body });
+  }
+  lastSeq = seq;
+}
+$("#notify").onchange = async (e) => {
+  const on = e.target.checked;
+  if (on && !IN_APP && "Notification" in window && Notification.permission !== "granted") {
+    const p = await Notification.requestPermission();
+    if (p === "granted") new Notification("GPU 할당 알림 켜짐", { body: "잡에 GPU가 할당되거나 반납되면 알려드립니다." });
+  }
+  await fetch(`/api/notify?on=${on ? 1 : 0}`);
+  e.target.blur();
+};
+
 async function tick() {
   try {
     const r = await fetch("/api/state");
-    render(await r.json());
+    const s = await r.json();
+    syncNotify(s);
+    // don't redraw under an active text selection (dragging to copy a cmdline)
+    if (String(window.getSelection())) { window.__last = s; return; }
+    render(s);
   } catch (e) {
     $("#stamp").innerHTML = `<span class="err">서버 연결 끊김</span>`;
   }

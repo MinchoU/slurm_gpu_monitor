@@ -22,7 +22,7 @@ iconutil -c icns "$ICONSET" -o "$BUILD/AppIcon.icns"
 
 echo "→ 컴파일"
 clang -fobjc-arc -O2 -Wall -mmacosx-version-min=13.0 \
-  -framework Cocoa -framework WebKit \
+  -framework Cocoa -framework WebKit -framework UserNotifications \
   -o "$BUILD/GPUMonitor" GPUMonitor.m
 
 echo "→ 번들 조립"

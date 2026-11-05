@@ -10,8 +10,10 @@
 // Build: see build_app.sh
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
+#import <UserNotifications/UserNotifications.h>
 
-@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate,
+                                   UNUserNotificationCenterDelegate>
 @property(strong) NSWindow *window;
 @property(strong) WKWebView *webView;
 @property(strong) NSTextField *status;
@@ -78,6 +80,7 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)note {
     self.port = 0;
+    UNUserNotificationCenter.currentNotificationCenter.delegate = self;
     [self buildMenu];
     [self buildWindow];
     if ([self configuredHost].length == 0) {
@@ -127,8 +130,10 @@
 
     NSView *content = self.window.contentView;
 
-    self.webView = [[WKWebView alloc] initWithFrame:content.bounds
-                                      configuration:[[WKWebViewConfiguration alloc] init]];
+    // The page checks for this tag to leave notifications to the native side.
+    WKWebViewConfiguration *conf = [[WKWebViewConfiguration alloc] init];
+    conf.applicationNameForUserAgent = @"GPUMonitorApp";
+    self.webView = [[WKWebView alloc] initWithFrame:content.bounds configuration:conf];
     self.webView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [content addSubview:self.webView];
 
@@ -181,24 +186,27 @@
     task.standardOutput = pipe;
     task.standardError = pipe;
 
-    __block NSMutableString *buffer = [NSMutableString string];
+    // Bytes, not a string: a read can end mid-way through a UTF-8 sequence.
+    __block NSMutableData *buffer = [NSMutableData data];
     __weak typeof(self) weakSelf = self;
     pipe.fileHandleForReading.readabilityHandler = ^(NSFileHandle *fh) {
         NSData *data = fh.availableData;
         if (!data.length) return;
-        NSString *chunk = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        if (!chunk) return;
-        [buffer appendString:chunk];
+        [buffer appendData:data];
 
-        typeof(self) me = weakSelf;
-        if (!me || me.port != 0) return;
-
-        // server.py announces the port it actually bound (the default may be taken).
-        NSRange r = [buffer rangeOfString:@"GPUMON_PORT=([0-9]+)"
-                                  options:NSRegularExpressionSearch];
-        if (r.location == NSNotFound) return;
-        NSInteger found = [[buffer substringWithRange:r] substringFromIndex:12].integerValue;
-        dispatch_async(dispatch_get_main_queue(), ^{ [me loadPort:found]; });
+        // Handle complete lines only; keep the tail for the next read.
+        const char *bytes = buffer.bytes;
+        NSUInteger start = 0;
+        for (NSUInteger i = 0; i < buffer.length; i++) {
+            if (bytes[i] != '\n') continue;
+            NSString *line = [[NSString alloc]
+                initWithBytes:bytes + start length:i - start encoding:NSUTF8StringEncoding];
+            start = i + 1;
+            if (line) dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf handleServerLine:line];
+            });
+        }
+        [buffer replaceBytesInRange:NSMakeRange(0, start) withBytes:NULL length:0];
     };
 
     task.terminationHandler = ^(NSTask *proc) {
@@ -219,6 +227,79 @@
         return;
     }
     self.server = task;
+}
+
+- (void)handleServerLine:(NSString *)line {
+    // server.py announces the port it actually bound (the default may be taken).
+    if (self.port == 0 && [line hasPrefix:@"GPUMON_PORT="]) {
+        [self loadPort:[line substringFromIndex:12].integerValue];
+    } else if ([line isEqualToString:@"GPUMON_NOTIFY_ON"]) {
+        [self notificationsTurnedOn];
+    } else if ([line hasPrefix:@"GPUMON_EVENT="]) {
+        NSData *json = [[line substringFromIndex:13] dataUsingEncoding:NSUTF8StringEncoding];
+        id ev = [NSJSONSerialization JSONObjectWithData:json options:0 error:NULL];
+        if ([ev isKindOfClass:[NSDictionary class]] && [self notifyEnabled])
+            [self notifyTitle:ev[@"title"] body:ev[@"body"]];
+    }
+}
+
+#pragma mark - notifications
+
+- (BOOL)notifyEnabled {
+    return [[self readConfig][@"notify"] boolValue];
+}
+
+- (void)notifyTitle:(NSString *)title body:(NSString *)body {
+    UNMutableNotificationContent *c = [[UNMutableNotificationContent alloc] init];
+    c.title = [title isKindOfClass:[NSString class]] ? title : @"GPU 할당 변경";
+    c.body = [body isKindOfClass:[NSString class]] ? body : @"";
+    c.sound = UNNotificationSound.defaultSound;
+    UNNotificationRequest *req = [UNNotificationRequest
+        requestWithIdentifier:NSUUID.UUID.UUIDString content:c trigger:nil];
+    [UNUserNotificationCenter.currentNotificationCenter addNotificationRequest:req
+                                                         withCompletionHandler:nil];
+}
+
+// The dashboard's toggle saves `notify` via server.py, which then prints
+// GPUMON_NOTIFY_ON so we can ask macOS for permission and confirm with a banner.
+- (void)notificationsTurnedOn {
+    __weak typeof(self) weakSelf = self;
+    [UNUserNotificationCenter.currentNotificationCenter
+        requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound)
+                      completionHandler:^(BOOL granted, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            typeof(self) me = weakSelf;
+            if (!me) return;
+            if (granted) {
+                [me notifyTitle:@"GPU 할당 알림 켜짐"
+                           body:@"잡에 GPU가 할당되거나 반납되면 여기로 알려드립니다."];
+                return;
+            }
+            NSAlert *a = [[NSAlert alloc] init];
+            a.messageText = @"알림 권한이 없습니다";
+            a.informativeText = @"시스템 설정 → 알림 → GPU Monitor 에서 알림을 허용하세요.";
+            [a addButtonWithTitle:@"시스템 설정 열기"];
+            [a addButtonWithTitle:@"닫기"];
+            if ([a runModal] == NSAlertFirstButtonReturn)
+                [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:
+                    @"x-apple.systempreferences:com.apple.Notifications-Settings.extension"]];
+        });
+    }];
+}
+
+// Show banners even while the dashboard window is in front.
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions))handler {
+    handler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound);
+}
+
+// Clicking a notification brings the dashboard up.
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+didReceiveNotificationResponse:(UNNotificationResponse *)response
+         withCompletionHandler:(void (^)(void))handler {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self showWindow]; });
+    handler();
 }
 
 - (NSURL *)dashboardURL {
